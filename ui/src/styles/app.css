@@ -164,3 +164,5 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 @media (max-width: 420px) {
   .themes { grid-template-columns: repeat(2, 1fr); }
 }
+.choice-hint { margin: -6px 0 14px; }
+.btn.is-disabled { opacity: .45; }

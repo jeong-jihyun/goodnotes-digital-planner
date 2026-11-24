@@ -5,19 +5,21 @@ import Button, { ButtonLine } from '../components/Button.jsx'
 import Row from '../components/Row.jsx'
 import StatusTag from '../components/StatusTag.jsx'
 import Notice from '../components/Notice.jsx'
+import { href } from '../hooks/useHashRoute.js'
+import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
 
-// 기존 생성 흐름(Electron 데스크톱 경로)을 유지한다.
+// 데스크톱(Electron) 앱에서는 '플래너 만들기'에서 고른 설정으로 바로 만든다.
 // 웹 브라우저에서 실제 PDF를 만드는 기능은 5~6단계(API 서버)에서 연결한다.
-const DEFAULT = { year: 2027, weekStart: 'monday', lang: 'ko', theme: 'navy', weekly: true, daily: true, notes: 5 }
 
 export default function GeneratePage() {
   const [log, setLog] = useState('')
   const [busy, setBusy] = useState(false)
+  const { settings, valid, pages } = usePlannerSettings()
   const isDesktop = typeof window !== 'undefined' && !!window.planner
 
   async function runDesktop() {
     setBusy(true); setLog('생성 중...')
-    try { setLog(JSON.stringify(await window.planner.generate(DEFAULT), null, 2)) }
+    try { setLog(JSON.stringify(await window.planner.generate(settings), null, 2)) }
     catch (e) { setLog('오류: ' + e.message) }
     setBusy(false)
   }
@@ -27,12 +29,14 @@ export default function GeneratePage() {
       <PageHeader title="PDF 생성" sub="생성 전 필수 항목을 확인하고 PDF를 만듭니다." />
       <Grid>
         <Card size="wide" title="생성 전 검수">
-          <Row end={<StatusTag tone="wait">3단계</StatusTag>}>기본 정보 입력</Row>
-          <Row end={<StatusTag tone="wait">4단계</StatusTag>}>디자인 옵션 선택</Row>
+          <Row end={valid ? <StatusTag tone="ok">확인</StatusTag> : <Button variant="alt" href={href('create')}>고치러 가기</Button>}>
+            기본 정보 입력{valid && pages ? ` · 약 ${pages.toLocaleString()}쪽` : ''}
+          </Row>
+          <Row end={<StatusTag tone="wait">7단계</StatusTag>}>미리보기 확인</Row>
           <Row end={<StatusTag tone="wait">6단계</StatusTag>}>웹 생성 엔진 연결</Row>
           <Row end={<StatusTag tone={isDesktop ? 'ok' : 'wait'}>{isDesktop ? '데스크톱 앱' : '웹 브라우저'}</StatusTag>}>실행 환경</Row>
           {isDesktop ? (
-            <ButtonLine><Button disabled={busy} onClick={runDesktop}>기본 설정으로 PDF 만들기</Button></ButtonLine>
+            <ButtonLine><Button disabled={busy || !valid} onClick={runDesktop}>이 설정으로 PDF 만들기</Button></ButtonLine>
           ) : (
             <Notice stage={6}>웹 브라우저에서는 아직 PDF를 만들 수 없습니다. 버튼을 일부러 두지 않았습니다.</Notice>
           )}

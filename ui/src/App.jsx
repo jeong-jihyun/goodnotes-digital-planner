@@ -2,6 +2,7 @@ import React from 'react'
 import AppShell from './app/AppShell.jsx'
 import { useHashRoute } from './hooks/useHashRoute.js'
 import { ToastProvider } from './components/Toast.jsx'
+import { PlannerSettingsProvider } from './hooks/usePlannerSettings.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import CreatePage from './pages/CreatePage.jsx'
 import PreviewPage from './pages/PreviewPage.jsx'
@@ -19,10 +20,12 @@ const PAGES = {
 export default function App() {
   const path = useHashRoute()
   const Page = PAGES[path]
-  const statusText = window.planner ? '데스크톱 모드' : '개발 중 · 2단계'
+  const statusText = window.planner ? '데스크톱 모드' : '개발 중 · 4단계'
   return (
     <ToastProvider>
-      <AppShell current={path} statusText={statusText}><Page /></AppShell>
+      <PlannerSettingsProvider>
+        <AppShell current={path} statusText={statusText}><Page /></AppShell>
+      </PlannerSettingsProvider>
     </ToastProvider>
   )
 }
