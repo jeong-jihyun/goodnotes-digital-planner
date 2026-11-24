@@ -13,7 +13,8 @@ pip install -r requirements.txt
 python -m engine.cli --year 2027 --lang ko --theme navy --out output
 python -m pytest -q   # 테스트
 ```
-결과: `output/planner_2027_ko_navy.pdf`, `output/previews/*.png`, `output/listing_copy.json`
+추가 옵션(3단계): `--paper tablet-landscape|goodnotes-portrait|a4-portrait` (용지), `--links full|monthly` (링크 범위), `--lang ko-en` (한국어+영어 나란히)
+결과: `output/planner_2027_ko_navy.pdf` (가로형이 아니면 파일 이름 끝에 `_용지` 가 붙음), `output/previews/*.png`, `output/listing_copy.json`
 
 ## 화면(React) + PC 프로그램(Electron)
 ```bash
@@ -37,6 +38,7 @@ NanumGothic(OFL)을 PDF에 내장합니다. 상업 판매 가능하지만 폰트
 ※ 이 저장소에는 폰트 파일(NanumGothic.ttf, 4.6MB)이 없습니다. `engine/fonts/FONT_README.md` 를 보고 넣어 주세요. 폰트가 없으면 한글이 PDF에 나오지 않습니다.
 
 ## 테스트 현황
+- 2026-11-25: 엔진 29개 테스트 통과 (용지 3종 크기·링크, 링크 범위, 한영 병기, CLI 추가)
 - 엔진 15개 테스트 통과 (윤년, 2026~2030 모든 월 달력, 주 시작 요일, 링크 출발·도착 쌍 전체 비교, 깨진 링크 탐지). 2026-10-20 이 저장소에서 다시 실행해 확인했습니다. 단, 폰트 파일이 없는 상태라 한글 글자 표시는 확인하지 못했습니다.
 - React 화면 빌드는 이전에 확인했습니다. 이 저장소에서는 다시 실행하지 않았습니다.
 - 굿노트 앱 실제 링크 동작과 Electron 창 실행은 사람이 확인 필요

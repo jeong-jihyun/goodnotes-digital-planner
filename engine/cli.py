@@ -1,4 +1,5 @@
-"""사용법: python -m engine.cli --year 2027 --lang ko --theme navy --out output"""
+"""사용법: python -m engine.cli --year 2027 --lang ko --theme navy --out output
+추가 옵션: --paper tablet-landscape|goodnotes-portrait|a4-portrait, --links full|monthly, --lang ko-en"""
 import argparse, json, os
 from .config import PlannerConfig
 from .planner import generate
@@ -17,12 +18,16 @@ def main(argv=None):
     ap.add_argument("--no-daily", action="store_true")
     ap.add_argument("--notes", type=int, default=5)
     ap.add_argument("--font", default="")
+    ap.add_argument("--paper", default="tablet-landscape")
+    ap.add_argument("--links", default="full")
     ap.add_argument("--out", default="output")
     a = ap.parse_args(argv)
     cfg = PlannerConfig(year=a.year, week_start=a.week_start, lang=a.lang, theme=a.theme,
                         include_weekly=not a.no_weekly, include_daily=not a.no_daily,
-                        note_pages=a.notes, font_path=a.font)
-    pdf = os.path.join(a.out, f"planner_{a.year}_{a.lang}_{a.theme}.pdf")
+                        note_pages=a.notes, font_path=a.font, paper=a.paper, link_scope=a.links)
+    # 기본 용지(태블릿 가로형)는 예전 파일 이름을 그대로 쓴다
+    suffix = "" if a.paper == "tablet-landscape" else f"_{a.paper}"
+    pdf = os.path.join(a.out, f"planner_{a.year}_{a.lang}_{a.theme}{suffix}.pdf")
     info = generate(cfg, pdf)
     check = validate_pdf(pdf)
     previews = make_previews(pdf, os.path.join(a.out, "previews"))
