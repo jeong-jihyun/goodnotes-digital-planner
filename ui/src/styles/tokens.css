@@ -1,0 +1,43 @@
+/* 디자인 토큰 — docs/모바일 컨셉 디자인 시안용.html 기준 (사용자 확정: "모바일 시안 그대로") */
+:root {
+  --brand: #6558d3;
+  --brand-hover: #5547c4;
+  --ink: #192235;
+  --muted: #778197;
+  --nav-text: #687287;
+  --label: #4d586d;
+  --line: #e9edf3;
+  --input-line: #e2e6ee;
+  --bg: #f4f6fa;
+  --soft: #f0efff;
+  --surface: #ffffff;
+  --btn-alt-bg: #eff1f6;
+  --btn-alt-text: #465168;
+  --paper-bg: #f5f3ed;
+  --paper-cell: #f3f1eb;
+  --notice-bg: #fff8e7;
+  --notice-line: #f1e5c3;
+  --notice-text: #816b30;
+  --ok-bg: #e9f7f2;
+  --ok-text: #16866f;
+  --warn-bg: #fff3e0;
+  --warn-text: #9a6a25;
+  --err-bg: #fdecec;
+  --err-text: #b54747;
+  --toast-bg: #20283a;
+
+  --radius-card: 17px;
+  --radius-btn: 10px;
+  --radius-input: 9px;
+  --radius-pill: 30px;
+
+  --font: Arial, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --fs-h1: 32px;
+  --fs-body: 13px;
+  --fs-small: 12px;
+  --fs-tiny: 11px;
+
+  --sidebar-w: 225px;
+  --container: 1180px;
+  --bp-mobile: 740px; /* 참고용: CSS 미디어쿼리는 변수를 못 써서 값 직접 사용 */
+}
