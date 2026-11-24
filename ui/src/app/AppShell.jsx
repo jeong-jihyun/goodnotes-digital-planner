@@ -31,7 +31,7 @@ export default function AppShell({ current, statusText, children }) {
               </a>
             ))}
           </nav>
-          <p className="tiny side-foot">UI 개발 중 · 1단계<br />PDF 생성 엔진은 6단계에서 연결</p>
+          <p className="tiny side-foot">UI 개발 중 · 2단계<br />PDF 생성 엔진은 6단계에서 연결</p>
         </aside>
         <main className="main">
           <div className="top">

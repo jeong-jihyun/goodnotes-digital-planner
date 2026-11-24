@@ -8,6 +8,12 @@ export const ROUTES = [
   { path: 'settings', label: '설정 및 이력', short: '설정', icon: '⚙' },
 ]
 
+// 메뉴에는 안 보이고 주소로만 여는 확인용 화면
+export const HIDDEN_ROUTES = [
+  { path: 'components', label: '부품 모음' },
+]
+
 export const DEFAULT_ROUTE = 'dashboard'
 
-export const findRoute = (path) => ROUTES.find((r) => r.path === path) || ROUTES[0]
+export const findRoute = (path) =>
+  ROUTES.find((r) => r.path === path) || HIDDEN_ROUTES.find((r) => r.path === path) || ROUTES[0]

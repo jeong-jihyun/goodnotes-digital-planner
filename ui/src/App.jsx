@@ -8,16 +8,18 @@ import PreviewPage from './pages/PreviewPage.jsx'
 import GeneratePage from './pages/GeneratePage.jsx'
 import ListingPage from './pages/ListingPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import ComponentsPage from './pages/ComponentsPage.jsx'
 
 const PAGES = {
   dashboard: DashboardPage, create: CreatePage, preview: PreviewPage,
   generate: GeneratePage, listing: ListingPage, settings: SettingsPage,
+  components: ComponentsPage, // 숨은 확인용 화면
 }
 
 export default function App() {
   const path = useHashRoute()
   const Page = PAGES[path]
-  const statusText = window.planner ? '데스크톱 모드' : '개발 중 · 1단계'
+  const statusText = window.planner ? '데스크톱 모드' : '개발 중 · 2단계'
   return (
     <ToastProvider>
       <AppShell current={path} statusText={statusText}><Page /></AppShell>

@@ -105,3 +105,62 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
   h1 { font-size: 27px; }
   .toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
 }
+
+/* ───── 2단계 공통 부품 ───── */
+.row-main { min-width: 0; }
+.tag.ok { color: var(--ok-text); background: var(--ok-bg); }
+.tag.error { color: var(--err-text); background: var(--err-bg); }
+.tag.info { color: var(--brand); background: var(--soft); }
+.notice.error { background: var(--err-bg); border-color: #f2c9c9; color: var(--err-text); }
+.notice.success { background: var(--ok-bg); border-color: #c5e9dc; color: var(--ok-text); }
+
+/* 입력칸 도움말·오류 */
+.field-hint { font-size: var(--fs-tiny); color: var(--muted); }
+.field-error { font-size: var(--fs-tiny); color: var(--err-text); font-weight: bold; }
+.field.has-error input, .field.has-error select, .field.has-error textarea { border-color: var(--err-text); }
+.field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
+
+/* 숫자 입력 − / + */
+.stepper { display: flex; align-items: stretch; gap: 6px; }
+.stepper input { text-align: center; flex: 1; min-width: 0; }
+.stepper-btn { flex: none; width: 44px; border: 1px solid var(--input-line); background: var(--btn-alt-bg); color: var(--btn-alt-text); border-radius: var(--radius-input); font-size: 18px; font-weight: bold; cursor: pointer; }
+.stepper-btn:disabled { opacity: .4; cursor: not-allowed; }
+.stepper-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.stepper-unit { align-self: center; font-size: var(--fs-small); color: var(--muted); }
+
+/* 선택 버튼 묶음 */
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice { min-height: 44px; padding: 9px 14px; }
+
+/* 스위치 */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.toggle-row:last-child { border-bottom: 0; }
+.toggle-text { display: grid; gap: 3px; min-width: 0; }
+.toggle-label { font-size: var(--fs-small); font-weight: bold; color: var(--label); }
+.switch { flex: none; position: relative; display: inline-flex; align-items: center; width: 84px; height: 36px; border: 0; border-radius: 20px; background: #dfe3ea; cursor: pointer; padding: 0 10px 0 36px; transition: background .15s; }
+.switch .switch-knob { position: absolute; left: 4px; top: 4px; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px #0002; transition: left .15s; }
+.switch .switch-text { font-size: var(--fs-tiny); font-weight: bold; color: var(--btn-alt-text); }
+.switch.on { background: var(--brand); padding: 0 36px 0 12px; }
+.switch.on .switch-knob { left: 52px; }
+.switch.on .switch-text { color: #fff; }
+.switch:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* 테마 카드 */
+.themes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.theme-card { position: relative; display: grid; gap: 8px; justify-items: start; text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px; cursor: pointer; min-height: 44px; color: var(--ink); }
+.theme-card.selected { border: 2px solid var(--brand); background: var(--soft); padding: 9px; }
+.theme-card:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.swatch { display: block; width: 100%; height: 34px; border-radius: 8px; position: relative; overflow: hidden; }
+.swatch span { position: absolute; right: 0; bottom: 0; width: 40%; height: 45%; border-top-left-radius: 8px; }
+.theme-name { font-size: var(--fs-small); font-weight: bold; display: grid; }
+.theme-name small { font-weight: normal; color: var(--muted); font-size: 10px; }
+.theme-check { position: absolute; top: 6px; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 11px; display: grid; place-items: center; }
+
+/* 진행률 모름 표시 */
+.progress.indeterminate span { width: 35%; animation: indet 1.2s ease-in-out infinite; }
+@keyframes indet { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .progress.indeterminate span { animation: none; width: 100%; opacity: .4; } }
+
+@media (max-width: 420px) {
+  .themes { grid-template-columns: repeat(2, 1fr); }
+}
