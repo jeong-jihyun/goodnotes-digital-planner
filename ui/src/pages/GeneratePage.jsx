@@ -1,50 +1,163 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader.jsx'
-import Card, { Grid, Metric } from '../components/Card.jsx'
+import Card, { Grid } from '../components/Card.jsx'
 import Button, { ButtonLine } from '../components/Button.jsx'
 import Row from '../components/Row.jsx'
 import StatusTag from '../components/StatusTag.jsx'
 import Notice from '../components/Notice.jsx'
+import ProgressBar from '../components/ProgressBar.jsx'
 import { href } from '../hooks/useHashRoute.js'
 import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
+import { useGeneration } from '../hooks/useGeneration.jsx'
+import { labelOf } from '../domain/settings.js'
+import { THEMES } from '../domain/themes.js'
+import * as api from '../services/plannerApi.js'
 
-// 데스크톱(Electron) 앱에서는 '플래너 만들기'에서 고른 설정으로 바로 만든다.
-// 웹 브라우저에서 실제 PDF를 만드는 기능은 5~6단계(API 서버)에서 연결한다.
+// 진행 단계 (서버가 실제로 알려 주는 상태만 표시, 퍼센트는 지어내지 않음)
+const STEPS = [
+  { key: 'send', label: '요청 보내기', phases: ['submitting', 'waking'] },
+  { key: 'make', label: 'PDF 만드는 중', phases: ['queued', 'processing'] },
+  { key: 'check', label: '링크 검사 중', phases: ['verifying'] },
+  { key: 'done', label: '완료', phases: ['succeeded'] },
+]
+const ORDER = ['submitting', 'waking', 'queued', 'processing', 'verifying', 'succeeded']
+const BUSY = new Set(['submitting', 'waking', 'queued', 'processing', 'verifying'])
+
+function stepTone(step, phase) {
+  const idx = ORDER.indexOf(phase)
+  const first = Math.min(...step.phases.map((p) => ORDER.indexOf(p)))
+  const lastIdx = Math.max(...step.phases.map((p) => ORDER.indexOf(p)))
+  if (step.phases.includes(phase)) return phase === 'succeeded' ? ['ok', '완료'] : ['info', '진행 중']
+  if (idx > lastIdx) return ['ok', '완료']
+  if (idx >= 0 && idx < first) return ['wait', '대기']
+  return ['wait', '대기']
+}
+
+const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
 
 export default function GeneratePage() {
-  const [log, setLog] = useState('')
-  const [busy, setBusy] = useState(false)
   const { settings, valid, pages } = usePlannerSettings()
+  const gen = useGeneration()
+  const [server, setServer] = useState(api.apiConfigured() ? 'checking' : 'none')
+  const [log, setLog] = useState('')
+  const [desktopBusy, setDesktopBusy] = useState(false)
   const isDesktop = typeof window !== 'undefined' && !!window.planner
+  const busy = BUSY.has(gen.phase)
+  const res = gen.job?.result
+  const stale = gen.phase === 'succeeded' && gen.sig !== gen.sigOf(settings)
+
+  // 끝나면(성공·실패) 결과 카드로 화면을 옮겨 준다 — 폰에서는 결과가 화면 아래에 생기기 때문
+  const resultRef = useRef(null)
+  const prevPhase = useRef(gen.phase)
+  useEffect(() => {
+    const was = prevPhase.current
+    prevPhase.current = gen.phase
+    if (BUSY.has(was) && (gen.phase === 'succeeded' || gen.phase === 'failed')) {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [gen.phase])
+
+  // 들어오자마자 서버를 한 번 불러 둔다 (잠든 서버를 미리 깨우는 효과)
+  useEffect(() => {
+    if (!api.apiConfigured() || isDesktop) return
+    let alive = true
+    const slow = setTimeout(() => alive && setServer((s) => (s === 'checking' ? 'waking' : s)), 3000)
+    api.health()
+      .then((h) => alive && setServer(h.fontReady ? 'ok' : 'nofont'))
+      .catch(() => alive && setServer('down'))
+      .finally(() => clearTimeout(slow))
+    return () => { alive = false; clearTimeout(slow) }
+  }, [isDesktop])
 
   async function runDesktop() {
-    setBusy(true); setLog('생성 중...')
+    setDesktopBusy(true); setLog('생성 중...')
     try { setLog(JSON.stringify(await window.planner.generate(settings), null, 2)) }
     catch (e) { setLog('오류: ' + e.message) }
-    setBusy(false)
+    setDesktopBusy(false)
   }
+
+  const serverRow = {
+    none: <StatusTag tone="wait">미연결</StatusTag>,
+    checking: <StatusTag tone="info">확인 중</StatusTag>,
+    waking: <StatusTag tone="warn">깨우는 중</StatusTag>,
+    ok: <StatusTag tone="ok">연결됨</StatusTag>,
+    nofont: <StatusTag tone="error">한글 글꼴 없음</StatusTag>,
+    down: <StatusTag tone="error">연결 안 됨</StatusTag>,
+  }[server]
+
+  const canWeb = !isDesktop && api.apiConfigured() && valid && !busy
 
   return (
     <section>
-      <PageHeader title="PDF 생성" sub="생성 전 필수 항목을 확인하고 PDF를 만듭니다." />
+      <PageHeader title="PDF 생성" sub="생성 전 필수 항목을 확인하고 PDF를 만듭니다. 만든 파일은 1시간 동안 내려받을 수 있습니다." />
       <Grid>
         <Card size="wide" title="생성 전 검수">
           <Row end={valid ? <StatusTag tone="ok">확인</StatusTag> : <Button variant="alt" href={href('create')}>고치러 가기</Button>}>
             기본 정보 입력{valid && pages ? ` · 약 ${pages.toLocaleString()}쪽` : ''}
           </Row>
-          <Row end={<StatusTag tone="wait">7단계</StatusTag>}>미리보기 확인</Row>
-          <Row end={<StatusTag tone="wait">6단계</StatusTag>}>웹 생성 엔진 연결</Row>
-          <Row end={<StatusTag tone={isDesktop ? 'ok' : 'wait'}>{isDesktop ? '데스크톱 앱' : '웹 브라우저'}</StatusTag>}>실행 환경</Row>
+          <Row end={<span className="tiny">{labelOf('paper', settings.paper)} · {labelOf('lang', settings.lang)} · {THEMES.find((t) => t.id === settings.theme)?.name}</span>}>
+            고른 설정
+          </Row>
+          {!isDesktop && <Row end={serverRow}>PDF 만드는 서버</Row>}
+          {isDesktop && <Row end={<StatusTag tone="ok">데스크톱 앱</StatusTag>}>실행 환경</Row>}
+
+          {server === 'waking' && <Notice>무료 서버가 쉬고 있어서 깨우는 중입니다. 처음 한 번은 30초~1분 걸릴 수 있습니다.</Notice>}
+          {server === 'down' && <Notice tone="error">서버에 연결하지 못했습니다. 잠시 후 이 화면을 새로고침해 주세요.</Notice>}
+          {server === 'none' && !isDesktop && <Notice stage={5}>서버 주소가 아직 연결되지 않았습니다.</Notice>}
+
           {isDesktop ? (
-            <ButtonLine><Button disabled={busy || !valid} onClick={runDesktop}>이 설정으로 PDF 만들기</Button></ButtonLine>
+            <ButtonLine><Button disabled={desktopBusy || !valid} onClick={runDesktop}>이 설정으로 PDF 만들기</Button></ButtonLine>
           ) : (
-            <Notice stage={6}>웹 브라우저에서는 아직 PDF를 만들 수 없습니다. 버튼을 일부러 두지 않았습니다.</Notice>
+            <ButtonLine>
+              <Button disabled={!canWeb} onClick={() => gen.start(settings)}>
+                {busy ? '만드는 중…' : gen.phase === 'succeeded' ? '이 설정으로 다시 만들기' : 'PDF 만들기'}
+              </Button>
+            </ButtonLine>
           )}
           {log && <pre className="tiny" style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', padding: 10, borderRadius: 9 }}>{log}</pre>}
         </Card>
-        <Card tabletFull title="결과물 정보">
-          <Metric label="상태" value="생성 전" hint="실제 결과(페이지 수·링크 검증·파일 크기)는 생성 후 표시됩니다." />
+
+        <Card tabletFull title="진행 상태">
+          {gen.phase === 'idle' ? (
+            <p className="tiny">'PDF 만들기'를 누르면 여기에 진행 상황이 보입니다.</p>
+          ) : (
+            <>
+              {STEPS.map((st) => {
+                const [tone, text] = gen.phase === 'failed' ? ['wait', '—'] : stepTone(st, gen.phase)
+                return <Row key={st.key} end={<StatusTag tone={tone}>{text}</StatusTag>}>{st.label}</Row>
+              })}
+              {busy && <ProgressBar label="PDF 만드는 중" />}
+              {gen.phase === 'waking' && <p className="tiny">서버를 깨우는 중입니다. 화면을 닫지 말고 기다려 주세요.</p>}
+            </>
+          )}
         </Card>
+
+        <div ref={resultRef} className="full-span" />
+        {gen.phase === 'failed' && (
+          <Card size="full" title="만들지 못했습니다">
+            <Notice tone="error">{gen.error?.message || 'PDF 생성에 실패했습니다.'} 고른 설정은 그대로 남아 있습니다.</Notice>
+            <ButtonLine>
+              <Button disabled={!canWeb} onClick={() => gen.start(settings)}>다시 시도</Button>
+              <Button variant="alt" onClick={gen.reset}>닫기</Button>
+            </ButtonLine>
+          </Card>
+        )}
+
+        {gen.phase === 'succeeded' && res && (
+          <Card size="full" title="결과물">
+            {stale && <Notice>지금 '플래너 만들기'의 설정이 이 파일을 만들 때와 다릅니다. 바뀐 설정으로 받으려면 '다시 만들기'를 눌러 주세요.</Notice>}
+            <Row end={<b className="break">{res.fileName}</b>}>파일</Row>
+            <Row end={<b>{res.pageCount.toLocaleString()}쪽</b>}>페이지</Row>
+            <Row end={<span><b>{res.linkCount.toLocaleString()}개</b> · 깨진 링크 {res.brokenLinkCount}개 <StatusTag tone="ok">검사 통과</StatusTag></span>}>하이퍼링크</Row>
+            <Row end={<b>{res.sizeMb} MB</b>}>크기</Row>
+            {gen.job?.expiresAt && <Row end={<b>{fmtTime(gen.job.expiresAt)}까지</b>}>내려받기 가능</Row>}
+            <ButtonLine>
+              <Button href={api.downloadUrl(gen.id)} target="_blank" rel="noopener">PDF 내려받기</Button>
+              <Button variant="alt" onClick={gen.reset}>결과 지우기</Button>
+            </ButtonLine>
+            <Notice>아이폰·아이패드: PDF가 열리면 아래 공유(□↑) 버튼 → 'GoodNotes'를 고르면 바로 굿노트로 들어갑니다.</Notice>
+          </Card>
+        )}
       </Grid>
     </section>
   )

@@ -166,3 +166,5 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 }
 .choice-hint { margin: -6px 0 14px; }
 .btn.is-disabled { opacity: .45; }
+.break { word-break: break-all; text-align: right; }
+.full-span { grid-column: span 12; height: 0; scroll-margin-top: 12px; }
