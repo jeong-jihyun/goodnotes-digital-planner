@@ -38,6 +38,7 @@
   --fs-tiny: 11px;
 
   --sidebar-w: 225px;
+  --sidebar-w-collapsed: 72px;
   --container: 1180px;
   --bp-mobile: 740px; /* 참고용: CSS 미디어쿼리는 변수를 못 써서 값 직접 사용 */
 }

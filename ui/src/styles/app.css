@@ -4,9 +4,22 @@ html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); -webkit-text-size-adjust: 100%; }
 button, input, select, textarea { font-family: inherit; }
 
-.app { max-width: var(--container); margin: auto; min-height: 100vh; display: grid; grid-template-columns: var(--sidebar-w) 1fr; }
-.side { background: var(--surface); border-right: 1px solid var(--line); padding: 24px 15px; position: sticky; top: 0; height: 100vh; }
-.brand { font-weight: bold; padding: 8px 10px 28px; }
+.app { max-width: var(--container); margin: auto; min-height: 100vh; display: grid; grid-template-columns: var(--sidebar-w) 1fr; transition: grid-template-columns .2s; }
+.app.collapsed { grid-template-columns: var(--sidebar-w-collapsed) 1fr; }
+.side { background: var(--surface); border-right: 1px solid var(--line); padding: 24px 15px; position: sticky; top: 0; height: 100vh; overflow: hidden; }
+.side-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; padding-bottom: 28px; }
+.brand { font-weight: bold; font-size: 15px; padding: 8px 6px 0 10px; min-width: 0; white-space: nowrap; }
+.brand-mini { display: none; }
+.side-toggle { flex: none; width: 40px; height: 40px; border: 1px solid var(--line); background: #fff; border-radius: var(--radius-btn); color: var(--nav-text); cursor: pointer; font-size: 16px; }
+.side-toggle:hover { background: var(--soft); color: var(--brand); }
+.side-toggle:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.app.collapsed .side { padding: 24px 10px; }
+.app.collapsed .side-head { flex-direction: column; align-items: center; }
+.app.collapsed .brand { padding: 8px 0 0; text-align: center; }
+.app.collapsed .brand-full, .app.collapsed .nav-label, .app.collapsed .side-foot { display: none; }
+.app.collapsed .brand-mini { display: inline; color: var(--brand); }
+.app.collapsed .nav a { text-align: center; padding: 12px 0; }
+.app.collapsed .nav a .ico { width: auto; font-size: 16px; }
 .brand small { font-weight: normal; color: var(--muted); font-size: var(--fs-tiny); letter-spacing: .5px; }
 .nav { display: grid; gap: 5px; }
 .nav a { display: block; text-decoration: none; padding: 12px; border-radius: 11px; color: var(--nav-text); font-size: var(--fs-body); min-height: 44px; }
@@ -34,7 +47,7 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-small); }
 .row:last-child { border: 0; }
 
-.btn { border: 0; border-radius: var(--radius-btn); background: var(--brand); color: #fff; padding: 11px 14px; font-weight: bold; font-size: var(--fs-small); cursor: pointer; min-height: 40px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.btn { white-space: nowrap; border: 0; border-radius: var(--radius-btn); background: var(--brand); color: #fff; padding: 11px 14px; font-weight: bold; font-size: var(--fs-small); cursor: pointer; min-height: 40px; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .btn:hover { background: var(--brand-hover); }
 .btn.alt { background: var(--btn-alt-bg); color: var(--btn-alt-text); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
@@ -66,6 +79,18 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 
 .mobile { display: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 태블릿(741~1023px): 카드 2열 */
+@media (min-width: 741px) and (max-width: 1023px) {
+  .card { grid-column: span 6; }
+  .wide { grid-column: span 12; }
+  .half { grid-column: span 6; }
+  .card.stat { grid-column: span 4; }      /* 숫자 카드 3개는 한 줄 유지 */
+  .card.t-full { grid-column: span 12; }   /* 혼자 남는 카드는 한 줄 전체 */
+}
+@media (min-width: 741px) and (max-width: 900px) {
+  .app:not(.collapsed) .half { grid-column: span 12; }
+}
 
 @media (max-width: 740px) {
   .app { display: block; }

@@ -35,7 +35,7 @@ export default function GeneratePage() {
           )}
           {log && <pre className="tiny" style={{ whiteSpace: 'pre-wrap', background: 'var(--bg)', padding: 10, borderRadius: 9 }}>{log}</pre>}
         </div>
-        <div className="card">
+        <div className="card t-full">
           <h3>결과물 정보</h3>
           <div className="metric">생성 전</div>
           <div className="tiny">실제 결과(페이지 수·링크 검증·파일 크기)는 생성 후 표시됩니다.</div>

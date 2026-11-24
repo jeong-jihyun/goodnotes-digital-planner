@@ -12,7 +12,7 @@ export default function SettingsPage() {
           <div className="row">아직 기록이 없습니다 <span className="tiny">—</span></div>
           <StageNotice stage={9}>이력은 로그인 없이 이 기기 브라우저에만 저장됩니다.</StageNotice>
         </div>
-        <div className="card">
+        <div className="card t-full">
           <h3>환경 설정</h3>
           <StageNotice stage={9}>기본 언어 등 환경 설정이 들어갈 자리입니다.</StageNotice>
         </div>

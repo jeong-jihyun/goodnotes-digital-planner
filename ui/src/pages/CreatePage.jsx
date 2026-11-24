@@ -15,7 +15,7 @@ export default function CreatePage() {
           <StageNotice stage={3}>연도·주 시작 요일·언어·테마·주간/일간·노트 페이지(1~50) 입력과 검증이 들어갈 자리입니다.</StageNotice>
           <div className="btnline"><a className="btn alt" href={href('preview')}>다음 단계</a></div>
         </div>
-        <div className="card">
+        <div className="card t-full">
           <h3>진행 단계</h3>
           {STEPS.map((s, i) => (
             <div className="row" key={s}>0{i + 1} · {s} {i === 0 ? <span className="tag">현재</span> : <span className="tiny">{i === 1 ? '다음' : '대기'}</span>}</div>
