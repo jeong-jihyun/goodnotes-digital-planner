@@ -33,24 +33,33 @@ export function GenerationProvider({ children }) {
     }
   }, [state.phase, state.job, state.id, state.sig, record])
 
-  const poll = useCallback(async (id) => {
+  // resumed: 새로고침·다시 열었을 때 이어 보기. 이때 서버에 작업이 없으면(서버 재시작·업데이트) 오류 대신 조용히 비운다
+  const poll = useCallback(async (id, resumed = false) => {
     try {
       const job = await api.getGeneration(id)
+      if (resumed && job.status === 'expired') {          // 예전 결과의 보관 시간이 지난 것: 오류가 아니므로 조용히 비움 (기록은 남아 있음)
+        try { localStorage.removeItem(KEY) } catch { /* 무시 */ }
+        setState((s) => (s.id !== id ? s : { phase: 'idle', job: null, error: null, id: null, sig: null, at: null }))
+        return
+      }
       const phase = job.status === 'expired' ? 'failed' : job.status
       setState((s) => (s.id !== id ? s : {
         ...s, job, phase,
         error: job.status === 'failed' ? job.error : job.status === 'expired' ? { code: 'FILE_EXPIRED', message: '파일 보관 시간(1시간)이 지났습니다. 다시 만들어 주세요.' } : null,
       }))
-      if (!TERMINAL.has(job.status)) timer.current = setTimeout(() => poll(id), 1000)
+      if (!TERMINAL.has(job.status)) timer.current = setTimeout(() => poll(id, resumed), 1000)
     } catch (e) {
       // 작업이 서버에서 사라졌으면(서버 재시작 등) 끝난 것으로 처리, 그 외 일시 오류는 몇 초 뒤 다시
-      if (e.status === 404) setState((s) => (s.id !== id ? s : { ...s, phase: 'failed', error: { code: e.code, message: '서버에서 작업을 찾지 못했습니다. 다시 만들어 주세요.' } }))
-      else timer.current = setTimeout(() => poll(id), 3000)
+      if (e.status === 404 && resumed) {
+        try { localStorage.removeItem(KEY) } catch { /* 무시 */ }
+        setState((s) => (s.id !== id ? s : { phase: 'idle', job: null, error: null, id: null, sig: null, at: null }))
+      } else if (e.status === 404) setState((s) => (s.id !== id ? s : { ...s, phase: 'failed', error: { code: e.code, message: '서버에서 작업을 찾지 못했습니다. 다시 만들어 주세요.' } }))
+      else timer.current = setTimeout(() => poll(id, resumed), 3000)
     }
   }, [])
 
   useEffect(() => {
-    if (last.current && api.apiConfigured()) poll(last.current.id)
+    if (last.current && api.apiConfigured()) poll(last.current.id, true)
     else if (last.current) setState((s) => ({ ...s, phase: 'idle', id: null }))
     return () => clearTimeout(timer.current)
   }, [poll])

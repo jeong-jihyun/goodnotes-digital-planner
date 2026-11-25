@@ -245,3 +245,6 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
   .top, .top:not(:has(.status)) { margin-bottom: 22px; }
   .top-brand { display: inline-flex; }
 }
+
+/* '한 줄 전체' 카드는 어느 화면 폭에서도 한 줄 전체 (태블릿 규칙 '.card { span 6 }' 에 덮이지 않게 더 구체적으로) */
+.card.full, .card.wide.t-full { grid-column: span 12; }
