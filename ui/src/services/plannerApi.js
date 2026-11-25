@@ -36,4 +36,5 @@ export const toRequest = (s) => ({
 export const health = () => call('/health', { timeout: 90000 })
 export const createGeneration = (s) => call('/api/v1/generations', { method: 'POST', body: toRequest(s) })
 export const getGeneration = (id) => call(`/api/v1/generations/${encodeURIComponent(id)}`, { timeout: 30000 })
+export const createPreview = (s) => call('/api/v1/previews', { method: 'POST', body: toRequest(s) })
 export const downloadUrl = (id) => `${API_BASE}/api/v1/generations/${encodeURIComponent(id)}/download`

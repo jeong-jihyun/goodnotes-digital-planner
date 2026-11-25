@@ -149,3 +149,43 @@ def test_generate_period_with_holidays(api):
     r = done["result"]
     assert r["fileName"] == "planner_2027_ko_navy_11m3.pdf"
     assert r["pageCount"] == r["expectedPages"] and r["brokenLinkCount"] == 0
+
+
+# ---------- 미리보기 (7단계) ----------
+def test_preview_returns_real_page_images(api):
+    import base64
+    _, c = api
+    r = c.post("/api/v1/previews", json={**GOOD, "weekly": True, "daily": True})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    kinds = [p["kind"] for p in body["pages"]]
+    assert kinds == ["cover", "year", "month", "week", "day", "notes"]
+    for p in body["pages"]:
+        raw = base64.b64decode(p["image"].split(",", 1)[1])
+        assert raw[:2] == b"\xff\xd8" and len(raw) < 200_000      # JPEG, 가벼움
+        assert p["width"] == 960 and p["height"] > 0
+    assert body["pages"][0]["pageNumber"] == 1 and body["cached"] is False
+    # 같은 설정은 캐시에서 바로
+    assert c.post("/api/v1/previews", json={**GOOD, "weekly": True, "daily": True}).json()["cached"] is True
+
+
+def test_preview_skips_pages_not_in_settings(api):
+    _, c = api
+    body = c.post("/api/v1/previews", json={**GOOD, "weekly": False, "daily": False}).json()
+    assert [p["kind"] for p in body["pages"]] == ["cover", "year", "month", "notes"]
+
+
+def test_preview_portrait_shape_and_no_leftover_files(api):
+    srv, c = api
+    body = c.post("/api/v1/previews", json={**GOOD, "paper": "a4-portrait"}).json()
+    p = body["pages"][0]
+    assert p["height"] > p["width"]                       # 세로형은 세로 그림
+    assert os.listdir(srv.WORK_DIR) == []                 # 임시 파일 남지 않음
+
+
+def test_preview_validation_and_rate_limit():
+    _, c = load(PLANNER_FONT=FONT, MAX_PREVIEW_PER_IP_PER_10MIN=2, WORK_DIR=tempfile.mkdtemp(),
+                MAX_PER_IP_PER_10MIN=20, KEEP_SECONDS=3600)
+    assert c.post("/api/v1/previews", json={**GOOD, "notes": 0}).status_code == 422
+    codes = [c.post("/api/v1/previews", json={**GOOD, "notes": n}).status_code for n in (1, 2, 3)]
+    assert codes == [200, 200, 429]

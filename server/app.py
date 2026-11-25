@@ -10,7 +10,8 @@
 - 링크 검증을 통과한 PDF만 내려받을 수 있다.
 - 한글이 들어가는 설정인데 한글 글꼴이 없으면 '완료'로 처리하지 않는다.
 """
-import os, sys, shutil, tempfile, threading, time, uuid
+import base64, io, json, os, sys, shutil, tempfile, threading, time, uuid
+from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -34,6 +35,8 @@ FONT_PATH = os.environ.get("PLANNER_FONT", "/usr/share/fonts/truetype/nanum/Nanu
 KEEP_SECONDS = int(os.environ.get("KEEP_SECONDS", "3600"))      # 결과 파일 보관 1시간
 MAX_RUNNING = int(os.environ.get("MAX_RUNNING", "2"))            # 동시에 만드는 개수
 MAX_PER_IP_PER_10MIN = int(os.environ.get("MAX_PER_IP_PER_10MIN", "20"))
+MAX_PREVIEW_PER_IP_PER_10MIN = int(os.environ.get("MAX_PREVIEW_PER_IP_PER_10MIN", "60"))
+PREVIEW_WIDTH = 960          # 미리보기 그림 폭(px) — 폰에서 크게 보기(확대)해도 글자가 보이게
 ALLOWED_ORIGINS = [o.strip() for o in os.environ.get(
     "ALLOWED_ORIGINS",
     "https://goodnotes-digital-planner.vercel.app,http://localhost:5173,http://localhost:4173",
@@ -122,6 +125,9 @@ JOBS = {}
 LOCK = threading.Lock()
 SLOTS = threading.BoundedSemaphore(MAX_RUNNING)
 HITS = {}   # ip → [시각...]
+PREVIEW_HITS = {}
+PREVIEW_CACHE = OrderedDict()   # 설정(JSON) → 결과. 같은 설정을 다시 보면 바로 돌려준다
+PREVIEW_CACHE_MAX = 32
 
 
 def public(job):
@@ -191,10 +197,11 @@ def cleanup():
                 job.update(status="expired", stage="expired", pdf=None)
             if job["t"] < cutoff - 86400:
                 JOBS.pop(jid, None)
-        for ip in list(HITS):
-            HITS[ip] = [t for t in HITS[ip] if t > time.time() - 600]
-            if not HITS[ip]:
-                HITS.pop(ip)
+        for hits in (HITS, PREVIEW_HITS):
+            for ip in list(hits):
+                hits[ip] = [t for t in hits[ip] if t > time.time() - 600]
+                if not hits[ip]:
+                    hits.pop(ip)
 
 
 def client_ip(request: Request):
@@ -270,3 +277,65 @@ def download(jid: str):
     if job["status"] != "succeeded" or not job.get("pdf") or not os.path.exists(job["pdf"]):
         return error(409, "NOT_READY", "아직 내려받을 수 있는 상태가 아닙니다.")
     return FileResponse(job["pdf"], media_type="application/pdf", filename=job["result"]["fileName"])
+
+
+# ---------- 미리보기 ----------
+def _preview_pages(info, settings: PlannerSettings):
+    """보여 줄 쪽: 표지·연간·첫 달·첫 주·첫날·노트 (설정에 없는 페이지는 빼고)."""
+    from engine.calendar_utils import period_months, period_range, weeks_between, month_key, week_key, day_key
+    dp = info["dest_page"]
+    (y, m) = period_months(settings.year, settings.startMonth, settings.months)[0]
+    start, end = period_range(settings.year, settings.startMonth, settings.months)
+    want = [("cover", "표지", "cover"), ("year", "연간", "year"), ("month", "월간", month_key(y, m))]
+    if settings.weekly:
+        want.append(("week", "주간", week_key(weeks_between(start, end, settings.weekStart)[0])))
+    if settings.daily:
+        want.append(("day", "일간", day_key(start)))
+    want.append(("notes", "노트", "notes_1"))
+    return [(k, label, dp[key]) for k, label, key in want if key in dp]
+
+
+@app.post("/api/v1/previews")
+def create_preview(settings: PlannerSettings, request: Request):
+    """현재 설정으로 실제 PDF를 만든 뒤, 대표 쪽을 그림(JPEG)으로 돌려준다. 파일은 남기지 않는다."""
+    cleanup()
+    key = json.dumps(settings.model_dump(), sort_keys=True)
+    with LOCK:
+        if key in PREVIEW_CACHE:
+            PREVIEW_CACHE.move_to_end(key)
+            return {**PREVIEW_CACHE[key], "cached": True}
+        ip = client_ip(request)
+        hits = PREVIEW_HITS.setdefault(ip, [])
+        if len(hits) >= MAX_PREVIEW_PER_IP_PER_10MIN:
+            return error(429, "RATE_LIMITED", "미리보기를 너무 자주 요청했습니다. 잠시 후 다시 시도해 주세요.")
+        hits.append(time.time())
+    needs_korean = settings.lang in ("ko", "ko-en") or any(ord(ch) > 127 for ch in settings.title)
+    if needs_korean and not font_ready():
+        return error(503, "FONT_MISSING", "서버에 한글 글꼴이 없어 미리보기를 만들 수 없습니다.")
+    tmp = tempfile.mkdtemp(dir=WORK_DIR)
+    try:
+        import pypdfium2 as pdfium
+        pdf_path = os.path.join(tmp, "preview.pdf")
+        with SLOTS:
+            info = generate(to_config(settings, FONT_PATH if font_ready() else ""), pdf_path)
+            doc = pdfium.PdfDocument(pdf_path)
+            pages = []
+            for kind, label, page_no in _preview_pages(info, settings):
+                page = doc[page_no - 1]
+                img = page.render(scale=PREVIEW_WIDTH / page.get_width()).to_pil().convert("RGB")
+                buf = io.BytesIO()
+                img.save(buf, "JPEG", quality=82, optimize=True)
+                pages.append({"kind": kind, "label": label, "pageNumber": page_no,
+                              "width": img.width, "height": img.height,
+                              "image": "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()})
+            doc.close()
+        result = {"pageCount": info["pages"], "linkCount": info["links"], "pages": pages}
+        with LOCK:
+            PREVIEW_CACHE[key] = result
+            while len(PREVIEW_CACHE) > PREVIEW_CACHE_MAX:
+                PREVIEW_CACHE.popitem(last=False)
+        return {**result, "cached": False}
+    except Exception:
+        return error(500, "PREVIEW_FAILED", "미리보기를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)

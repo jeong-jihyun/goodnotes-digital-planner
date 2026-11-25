@@ -21,7 +21,7 @@ const PAGES = {
 export default function App() {
   const path = useHashRoute()
   const Page = PAGES[path]
-  const statusText = window.planner ? '데스크톱 모드' : '개발 중 · 5단계'
+  const statusText = window.planner ? '데스크톱 모드' : '개발 중 · 7단계'
   return (
     <ToastProvider>
       <PlannerSettingsProvider>

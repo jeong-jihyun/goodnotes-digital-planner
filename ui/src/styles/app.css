@@ -168,3 +168,22 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 .btn.is-disabled { opacity: .45; }
 .break { word-break: break-all; text-align: right; }
 .full-span { grid-column: span 12; height: 0; scroll-margin-top: 12px; }
+
+/* ───── 7단계 미리보기 ───── */
+.pv-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pv-stage { min-height: 220px; display: grid; place-items: center; transition: opacity .2s; }
+.pv-stage.is-busy { opacity: .55; }
+.pv-figure { margin: 0; display: grid; gap: 8px; justify-items: center; width: 100%; }
+.pv-figure img { display: block; width: 100%; max-width: 640px; height: auto; background: #fff; box-shadow: 0 5px 20px #20203018; border-radius: 4px; }
+.pv-figure img.portrait { max-width: min(100%, 420px); }
+.pv-empty { padding: 40px 0; }
+.linklike { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; min-height: 0; }
+
+.pv-zoom-btn { display: block; width: 100%; border: 0; padding: 0; background: none; cursor: zoom-in; }
+.pv-zoom-btn img { margin: 0 auto; }
+.pv-zoom-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 4px; }
+.pv-overlay { position: fixed; inset: 0; background: #10131bf2; z-index: 50; display: flex; flex-direction: column; }
+.pv-overlay-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; display: flex; align-items: flex-start; justify-content: center; padding: 56px 8px 8px; }
+.pv-overlay-scroll img { width: 100%; max-width: 1400px; height: auto; background: #fff; }
+.pv-close { position: absolute; top: calc(10px + env(safe-area-inset-top)); right: 10px; z-index: 1; border: 0; border-radius: var(--radius-btn); background: #fff; color: var(--ink); font-weight: bold; padding: 10px 14px; min-height: 44px; cursor: pointer; }
+.pv-overlay-hint { color: #fffc; font-size: var(--fs-tiny); text-align: center; margin: 0; padding: 8px 0 calc(10px + env(safe-area-inset-bottom)); }
