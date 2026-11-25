@@ -1,10 +1,11 @@
 import React from 'react'
 import { href } from '../hooks/useHashRoute.js'
 import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
-import { OPTIONS, LIMITS, labelOf, periodLabel, periodRange, daysBetween } from '../domain/settings.js'
-import { SelectField } from '../components/Field.jsx'
+import { OPTIONS, LIMITS, labelOf, periodLabel, periodRange, daysBetween, charCount } from '../domain/settings.js'
+import { SelectField, TextField } from '../components/Field.jsx'
+import ChoiceCards from '../components/ChoiceCards.jsx'
 import MultiChoice from '../components/MultiChoice.jsx'
-import { THEMES } from '../domain/themes.js'
+import { themeName, FONTS } from '../domain/themes.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Card, { Grid } from '../components/Card.jsx'
 import Button, { ButtonLine } from '../components/Button.jsx'
@@ -69,7 +70,23 @@ export default function CreatePage() {
           <ChoiceGroup label="언어" value={s.lang} onChange={(v) => set('lang', v)} options={OPTIONS.lang} />
           <ChoiceGroup label="용지 모양" value={s.paper} onChange={(v) => set('paper', v)} options={OPTIONS.paper} />
           <p className="field-hint choice-hint">{PAPER_HINT[s.paper]}</p>
-          <ThemePicker value={s.theme} onChange={(v) => set('theme', v)} />
+
+          <h4 className="form-sec">✨ 꾸미기</h4>
+          <ThemePicker value={s.theme} onChange={(v) => set('theme', v)}
+            color={s.customColor} onColor={(v) => set('customColor', v)} colorError={errors.customColor} />
+          <ChoiceCards label="글꼴" value={s.fontFamily} onChange={(v) => set('fontFamily', v)} options={FONTS}
+            hint="플래너 전체 글자에 쓰여요. 실제 모양은 다음 단계 미리보기에서 볼 수 있어요" />
+          <div className="field">
+            <span className="label">표지에 적을 글 <small className="tiny">(비우면 안 적어요)</small></span>
+            <div className="cover-fields">
+              <TextField label="제목" value={s.title} onChange={(v) => set('title', v)} placeholder={s.lang === 'en' ? 'Digital Planner' : '디지털 플래너'}
+                hint={`비우면 기본 제목 · ${charCount(s.title)}/${LIMITS.title}자`} error={errors.title} />
+              <TextField label="이름" value={s.owner} onChange={(v) => set('owner', v)} placeholder="예: 정지현"
+                hint={`표지 아래 밑줄 위에 · ${charCount(s.owner)}/${LIMITS.owner}자`} error={errors.owner} />
+              <TextField label="한 줄 다짐" value={s.motto} onChange={(v) => set('motto', v)} placeholder="예: 매일 조금씩 꾸준히"
+                hint={`제목 아래 작게 · ${charCount(s.motto)}/${LIMITS.motto}자`} error={errors.motto} />
+            </div>
+          </div>
 
           <h4 className="form-sec">📄 구성</h4>
           <div className="field">
@@ -114,7 +131,9 @@ export default function CreatePage() {
           <Row end={<b>{labelOf('weekStart', s.weekStart)}</b>}>한 주 시작</Row>
           <Row end={<b>{labelOf('lang', s.lang)}</b>}>언어</Row>
           <Row end={<b>{labelOf('paper', s.paper)}</b>}>용지</Row>
-          <Row end={<b>{THEMES.find((t) => t.id === s.theme)?.name}</b>}>테마</Row>
+          <Row end={<b>{s.theme === 'custom' ? <><span className="dot-color" style={{ background: s.customColor }} />{s.customColor}</> : themeName(s)}</b>}>테마</Row>
+          <Row end={<b>{labelOf('fontFamily', s.fontFamily)}</b>}>글꼴</Row>
+          <Row end={<b className="break">{[s.title.trim(), s.owner.trim(), s.motto.trim()].filter(Boolean).join(' · ') || '기본 제목만'}</b>}>표지</Row>
           <Row end={<b>{[s.weekly && '주간', s.daily && '일간'].filter(Boolean).join(' · ') || '연간·월간만'}</b>}>구성</Row>
           <Row end={<b>{labelOf('linkScope', s.linkScope)}</b>}>하이퍼링크</Row>
           <Row end={<b>{s.holidays ? '표시' : '안 함'}</b>}>공휴일</Row>

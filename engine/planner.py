@@ -14,7 +14,7 @@ from reportlab.lib.colors import HexColor
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-from .config import PlannerConfig, THEMES, PAPERS
+from .config import PlannerConfig, PAPERS, FONTS, theme_colors
 from .labels import LABELS
 from .calendar_utils import (month_grid, period_months, period_range, weeks_between,
                              days_between, day_key, week_key, month_key)
@@ -29,12 +29,25 @@ BLUE = HexColor("#2F6FD0")     # 토요일
 BUNDLED_FONT = os.path.join(os.path.dirname(__file__), "fonts", "NanumGothic.ttf")
 
 
-def _font(cfg):
-    """TTF를 PDF에 내장한다(보는 기기에 폰트가 없어도 한글이 보이도록)."""
-    path = cfg.font_path if cfg.font_path and os.path.exists(cfg.font_path) else BUNDLED_FONT
+def font_file(cfg):
+    """고른 글꼴 파일 경로. 기본(나눔고딕) 파일과 같은 폴더에서 찾는다. 없으면 None."""
+    base = cfg.font_path if cfg.font_path and os.path.exists(cfg.font_path) else BUNDLED_FONT
+    path = os.path.join(os.path.dirname(base), FONTS[cfg.font_family])
     if os.path.exists(path):
-        pdfmetrics.registerFont(TTFont("PlannerFont", path))
-        return "PlannerFont"
+        return path
+    return base if (cfg.font_family == "gothic" and os.path.exists(base)) else None
+
+
+def _font(cfg):
+    """TTF를 PDF에 내장한다(보는 기기에 폰트가 없어도 한글이 보이도록).
+    고른 글꼴이 없으면 기본 글꼴로 만든다 (서버는 미리 확인해서 거절한다)."""
+    path = font_file(cfg)
+    if path is None and os.path.exists(cfg.font_path or BUNDLED_FONT):
+        path = cfg.font_path if cfg.font_path and os.path.exists(cfg.font_path) else BUNDLED_FONT
+    if path:
+        name = "PlannerFont_" + cfg.font_family
+        pdfmetrics.registerFont(TTFont(name, path))
+        return name
     return "Helvetica"  # 영어 전용 대체 (한글 불가)
 
 
@@ -42,7 +55,10 @@ class Planner:
     def __init__(self, cfg: PlannerConfig, path):
         self.cfg = cfg.validate()
         self.L = LABELS[cfg.lang]
-        self.th = {k: HexColor(v) for k, v in THEMES[cfg.theme].items()}
+        self.th = {k: HexColor(v) for k, v in theme_colors(cfg).items()}
+        self.ink = self.th["ink"]                  # 종이 위 글자·선 (밝은 메인색이면 자동으로 진하게)
+        self.on_main = self.th["on_main"]        # 머리띠·켜진 탭 위 글자색 (다크·밝은 사용자 색 대비)
+        self.has_bg = theme_colors(cfg)["bg"].upper() != "#FFFFFF"
         self.font = _font(cfg)
         self.W, self.H = PAPERS[cfg.paper]
         self.portrait = self.H > self.W
@@ -70,6 +86,8 @@ class Planner:
         if self.cfg.start_month == 1 and self.cfg.months == 12:
             return str(self.cfg.year)
         (y1, m1), (y2, m2) = self.months[0], self.months[-1]
+        if self.cfg.months == 1:
+            return f"{y1}.{m1:02d}"
         return f"{y1}.{m1:02d} - {y2}.{m2:02d}"
 
     @property
@@ -125,9 +143,11 @@ class Planner:
         self.pages += 1
         self.dest_page[key] = self.pages
         c, W, H = self.c, self.W, self.H
+        if self.has_bg and key != "cover":       # 표지는 cover() 에서 따로 칠함
+            c.setFillColor(self.th["bg"]); c.rect(0, 0, W, H, stroke=0, fill=1)
         c.setFillColor(self.th["main"]); c.rect(0, H-50, W, 50, stroke=0, fill=1)
         if title:
-            c.setFillColor(WHITE)
+            c.setFillColor(self.on_main)
             c.setFont(self.font, self._fit(title, 20, W - TAB_W - LEFT - 160))
             c.drawString(LEFT, H-33, title)
         self._tabs(key)
@@ -151,9 +171,9 @@ class Planner:
         box_w = 150
         size = self._fit(text, 11, box_w - 20)
         right = W - TAB_W - LEFT
-        c.setFillColor(WHITE); c.setFont(self.font, size)
+        c.setFillColor(self.on_main); c.setFont(self.font, size)
         c.drawRightString(right - 12, H-33, text)
-        self._arrow(right - 7, H-29.5, 8, WHITE)
+        self._arrow(right - 7, H-29.5, 8, self.on_main)
         self._link(right - box_w, H-45, box_w, 40, month_key(y, m))
 
     def _header_chips(self, chips):
@@ -164,16 +184,16 @@ class Planner:
             size = 10
             w = pdfmetrics.stringWidth(label, self.font, size) + 16
             x -= w
-            c.setStrokeColor(WHITE); c.setLineWidth(0.8)
+            c.setStrokeColor(self.on_main); c.setLineWidth(0.8)
             c.roundRect(x, H-37, w, 22, 6, stroke=1, fill=0)
-            c.setFillColor(WHITE); c.setFont(self.font, size)
+            c.setFillColor(self.on_main); c.setFont(self.font, size)
             c.drawCentredString(x + w/2, H-29.5, label)
             self._link(x, H-40, w, 28, dest)
             x -= 6
 
     def _box(self, x, y, size):
         c = self.c
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.6)
+        c.setStrokeColor(self.ink); c.setLineWidth(0.6)
         c.rect(x, y, size, size, stroke=1, fill=0)
 
     def _month_chips(self, y, m):
@@ -201,7 +221,7 @@ class Planner:
             active = dest == current
             c.setFillColor(self.th["main"] if active else self.th["sub"])
             c.rect(W-TAB_W, y+1, TAB_W-4, h-2, stroke=0, fill=1)
-            c.setFillColor(WHITE if active else self.th["text"])
+            c.setFillColor(self.on_main if active else self.th["text"])
             lines = name.split("\n")
             # 줄 수와 탭 높이에 맞춰 글자 크기 결정
             size = min([self._fit(ln, 9, TAB_W-8) for ln in lines] + [max(5, (h - 4) / len(lines) - 1)])
@@ -215,16 +235,30 @@ class Planner:
     # ---- 페이지들 ----
     def cover(self):
         c, W, H = self.c, self.W, self.H
+        if self.has_bg:
+            c.setFillColor(self.th["bg"]); c.rect(0, 0, W, H, stroke=0, fill=1)
         # 배경을 먼저 칠해야 오른쪽 탭이 가려지지 않는다
         c.setFillColor(self.th["sub"]); c.rect(0, 0, W-TAB_W, H-50, stroke=0, fill=1)
         self._page_start("cover", "")
-        c.setFillColor(self.th["main"])
-        label = self.period_label()
-        c.setFont(self.font, self._fit(label, 54, W-TAB_W-LEFT*2))
-        c.drawCentredString((W-TAB_W)/2, H/2+20, label)
-        title = self.cfg.title or self.L["cover"]
-        c.setFont(self.font, self._fit(title, 26, W-TAB_W-LEFT*2))
-        c.drawCentredString((W-TAB_W)/2, H/2-30, title)
+        cx, max_w = (W-TAB_W)/2, W-TAB_W-LEFT*2
+        k = 1.3 if self.cfg.font_family == "pen" else 1.0   # 손글씨 펜은 글자가 작게 생겨서 표지만 키운다
+        lines = [(self.period_label(), 54 * k, self.ink),
+                 (self.cfg.title or self.L["cover"], 26 * k, self.ink)]
+        if self.cfg.motto:
+            lines.append((self.cfg.motto, 14 * k, self.th["text"]))
+        # 가운데 정렬: 줄 높이를 합쳐 세로 가운데에 놓는다
+        gaps = [s * 1.5 for _, s, _ in lines]
+        total = sum(gaps)
+        y = H/2 + total/2 - gaps[0] * 0.75
+        for (text, size, color), gap in zip(lines, gaps):
+            c.setFillColor(color); c.setFont(self.font, self._fit(text, size, max_w))
+            c.drawCentredString(cx, y, text)
+            y -= gap
+        if self.cfg.owner:                         # 이름: 아래쪽에 밑줄과 함께
+            c.setFillColor(self.th["text"]); c.setFont(self.font, self._fit(self.cfg.owner, 16 * k, max_w/2))
+            c.drawCentredString(cx, 80, self.cfg.owner)
+            c.setStrokeColor(self.ink); c.setLineWidth(0.8)
+            c.line(cx - 90, 72, cx + 90, 72)
         c.showPage()
 
     def yearly(self):
@@ -247,7 +281,7 @@ class Planner:
             r, k = divmod(i, cols)
             x = LEFT + k*bw
             y = H-70 - (r+1)*bh
-            c.setFillColor(self.th["main"]); c.setFont(self.font, 11)
+            c.setFillColor(self.ink); c.setFont(self.font, 11)
             head = self.L["months_short"][m-1]
             if self.multi_year:
                 head = f"{yy}. {head}" if self.cfg.lang != "en" else f"{head} {yy}"
@@ -283,7 +317,7 @@ class Planner:
             c.setFillColor(self.th["sub"]); c.rect(LEFT+i*cw, top-18, cw, 18, stroke=0, fill=1)
             c.setFillColor(self._col_color(i) or self.th["text"]); c.setFont(self.font, self._fit(n, 10, cw-4))
             c.drawCentredString(LEFT+i*cw+cw/2, top-13, n)
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        c.setStrokeColor(self.ink); c.setLineWidth(0.4)
         for r, week in enumerate(grid):
             y = top-18-(r+1)*rh
             for i, d in enumerate(week):
@@ -291,7 +325,7 @@ class Planner:
                 c.rect(x, y, cw, rh, stroke=1, fill=0)
                 if d:
                     dt = date(yy, m, d)
-                    c.setFillColor(self._day_color(dt, self.th["main"])); c.setFont(self.font, 11)
+                    c.setFillColor(self._day_color(dt, self.ink)); c.setFont(self.font, 11)
                     c.drawString(x+5, y+rh-15, str(d))
                     name = self.hol.get(dt)
                     if name:   # 공휴일 이름: 날짜 아래, 길면 두 줄로 (너무 작아지지 않게)
@@ -313,7 +347,7 @@ class Planner:
             return
         c = self.c
         c.setFillColor(self.th["sub"]); c.roundRect(10, y+rh/2-14, 24, 28, 4, stroke=0, fill=1)
-        self._arrow(19, y+rh/2, 9, self.th["main"])
+        self._arrow(19, y+rh/2, 9, self.ink)
         self._link(8, y+rh/2-16, 28, 32, week_key(start))
 
     def _clamp_month(self, d):
@@ -333,13 +367,13 @@ class Planner:
         names = self._dow()
         bw = self.content_w/2
         bh = (H-100)/4
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        c.setStrokeColor(self.ink); c.setLineWidth(0.4)
         for i in range(7):
             d = start + timedelta(days=i)
             col, row = divmod(i, 4)
             x, y = LEFT+col*bw, H-70-(row+1)*bh
             c.rect(x, y, bw-6, bh-6, stroke=1, fill=0)
-            c.setFillColor(self._day_color(d, self.th["main"])); c.setFont(self.font, 11)
+            c.setFillColor(self._day_color(d, self.ink)); c.setFont(self.font, 11)
             head = f"{d:%m/%d} {names[i]}"
             c.drawString(x+6, y+bh-22, head)
             name = self.hol.get(d)
@@ -360,7 +394,7 @@ class Planner:
         self._page_start(day_key(d), title)
         self._back_to_month(d.year, d.month)
         layout = self.cfg.daily_layout
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        c.setStrokeColor(self.ink); c.setLineWidth(0.4)
         if layout == "lined":                      # 줄노트: 한 장 전체 줄
             for j in range(int((H-90)/26)):
                 y = H-80-j*26
@@ -372,12 +406,12 @@ class Planner:
             c.setFont(self.font, 9)
             for i, hr in enumerate(hours):
                 y = H-75-(i+1)*rh
-                c.setFillColor(self.th["main"]); c.drawRightString(LEFT+26, y+rh-11, f"{hr:02d}")
+                c.setFillColor(self.ink); c.drawRightString(LEFT+26, y+rh-11, f"{hr:02d}")
                 c.line(LEFT+32, y, LEFT+left_w-10, y)
             c.line(LEFT+32, H-75, LEFT+32, H-75-len(hours)*rh)
             x2 = LEFT + left_w + 6
             right_w = self.content_w - left_w - 6
-            c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(self.L["todo"], 12, right_w))
+            c.setFillColor(self.ink); c.setFont(self.font, self._fit(self.L["todo"], 12, right_w))
             c.drawString(x2, H-78, self.L["todo"])
             rows = int((H-100) * 0.55 / 26)
             for j in range(rows):
@@ -391,7 +425,7 @@ class Planner:
             half = self.content_w/2
             rows = int((H-110)/30)
             for label, x in ((self.L["schedule"], LEFT), (self.L["todo"], LEFT+half)):
-                c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(label, 12, half-12))
+                c.setFillColor(self.ink); c.setFont(self.font, self._fit(label, 12, half-12))
                 c.drawString(x+6, H-78, label)
                 for j in range(rows):
                     y = H-95-j*30
@@ -414,7 +448,7 @@ class Planner:
             for gy in range(y0, int(y1), 26):
                 c.line(x0, gy, x1, gy)
         elif style == "dot":
-            c.setFillColor(self.th["main"])         # 연한 보조색은 점이 안 보여서 본색으로
+            c.setFillColor(self.ink)         # 연한 보조색은 점이 안 보여서 본색으로
             for gx in range(int(x0), int(x1)+1, 18):
                 for gy in range(y0, int(y1)+1, 18):
                     c.circle(gx, gy, 0.8, stroke=0, fill=1)
@@ -427,11 +461,11 @@ class Planner:
         self._page_start("year_goals", f"{self.period_label()} {self.L['year_goals']}")
         rows = 8
         rh = (H-110)/rows
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        c.setStrokeColor(self.ink); c.setLineWidth(0.4)
         for i in range(rows):
             y = H-75-(i+1)*rh
             c.setFillColor(self.th["sub"]); c.circle(LEFT+11, y+rh/2+2, 10, stroke=0, fill=1)
-            c.setFillColor(self.th["main"]); c.setFont(self.font, 10); c.drawCentredString(LEFT+11, y+rh/2-1.5, str(i+1))
+            c.setFillColor(self.ink); c.setFont(self.font, 10); c.drawCentredString(LEFT+11, y+rh/2-1.5, str(i+1))
             c.line(LEFT+30, y+rh/2-6, LEFT+self.content_w-60, y+rh/2-6)
             c.line(LEFT+30, y+6, LEFT+self.content_w-60, y+6)
             self._box(LEFT+self.content_w-40, y+rh/2-6, 14)
@@ -458,7 +492,7 @@ class Planner:
         for (name, _), xa, xb in zip(cols, xs, xs[1:]):
             c.setFont(self.font, self._fit(name, 10, xb-xa-6)); c.drawCentredString((xa+xb)/2, top-head_h+8, name)
         rows = int((top-head_h-bottom)/row_h)
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        c.setStrokeColor(self.ink); c.setLineWidth(0.4)
         yb = top-head_h-rows*row_h
         for j in range(rows+1):
             c.line(x0, top-head_h-j*row_h, xs[-1], top-head_h-j*row_h)
@@ -474,8 +508,8 @@ class Planner:
         c, H = self.c, self.H
         self._page_start(f"goals_{yy}_{m:02d}", f"{yy} {self.L['months'][m-1]} {self.L['month_goals']}")
         self._back_to_month(yy, m)
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
-        c.setFillColor(self.th["main"]); c.setFont(self.font, 12); c.drawString(LEFT, H-80, self.L["goals"])
+        c.setStrokeColor(self.ink); c.setLineWidth(0.4)
+        c.setFillColor(self.ink); c.setFont(self.font, 12); c.drawString(LEFT, H-80, self.L["goals"])
         rows = 6
         for i in range(rows):
             y = H-100-i*26
@@ -488,13 +522,13 @@ class Planner:
             for i, lb in enumerate(labels):
                 y = top-(i+1)*bh
                 c.setStrokeColor(self.th["sub"]); c.rect(LEFT, y+6, self.content_w, bh-6, stroke=1, fill=0)
-                c.setFillColor(self.th["main"]); c.setFont(self.font, 11); c.drawString(LEFT+8, y+bh-14, lb)
+                c.setFillColor(self.ink); c.setFont(self.font, 11); c.drawString(LEFT+8, y+bh-14, lb)
         else:                                      # 가로형: 세 칸을 옆으로
             bw = self.content_w/3
             for i, lb in enumerate(labels):
                 x = LEFT+i*bw
                 c.setStrokeColor(self.th["sub"]); c.rect(x, 30, bw-8, top-30, stroke=1, fill=0)
-                c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(lb, 11, bw-24)); c.drawString(x+8, top-16, lb)
+                c.setFillColor(self.ink); c.setFont(self.font, self._fit(lb, 11, bw-24)); c.drawString(x+8, top-16, lb)
         c.showPage()
 
     def habits(self, yy, m):
@@ -520,7 +554,7 @@ class Planner:
             c.setFillColor(self._day_color(dt, self.th["text"]))
             c.setFont(self.font, fs); c.drawCentredString(x+cw/2, top-13, str(d))
             c.setFont(self.font, max(5, fs-1.5)); c.drawCentredString(x+cw/2, top-25, dshort[dt.weekday()])
-        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.3)
+        c.setStrokeColor(self.ink); c.setLineWidth(0.3)
         yb = top-head-rows*rh
         for j in range(rows+1):
             c.line(LEFT, top-head-j*rh, LEFT+self.content_w, top-head-j*rh)
@@ -538,8 +572,8 @@ class Planner:
         bw = self.content_w/3
         for i, lb in enumerate([self.L["total_income"], self.L["total_expense"], self.L["balance"]]):
             x = LEFT+i*bw
-            c.setStrokeColor(self.th["main"]); c.setLineWidth(0.5); c.rect(x, H-120, bw-8, 44, stroke=1, fill=0)
-            c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(lb, 10, bw-24)); c.drawString(x+8, H-90, lb)
+            c.setStrokeColor(self.ink); c.setLineWidth(0.5); c.rect(x, H-120, bw-8, 44, stroke=1, fill=0)
+            c.setFillColor(self.ink); c.setFont(self.font, self._fit(lb, 10, bw-24)); c.drawString(x+8, H-90, lb)
         cols = [(self.L["date"], .13), (self.L["item"], .47), (self.L["income"], .20), (self.L["expense"], .20)]
         self._table(cols, H-132, 24, 24, start_no=None, numbered=False)
         c.showPage()

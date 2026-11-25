@@ -26,6 +26,11 @@ def main(argv=None):
     ap.add_argument("--extras", default="", help="추가 페이지 쉼표 구분: goals,habits,reading,budget")
     ap.add_argument("--daily-layout", default="plan-todo", help="plan-todo | timetable | lined")
     ap.add_argument("--note-style", default="grid", help="grid | lined | dot | blank")
+    ap.add_argument("--custom-color", default="", help="--theme custom 일 때 메인색 #RRGGBB")
+    ap.add_argument("--font-family", default="gothic", help="gothic | myeongjo | barun | squareround | pen")
+    ap.add_argument("--title", default="", help="표지 제목")
+    ap.add_argument("--owner", default="", help="표지 이름")
+    ap.add_argument("--motto", default="", help="표지 한 줄 다짐")
     ap.add_argument("--out", default="output")
     a = ap.parse_args(argv)
     cfg = PlannerConfig(year=a.year, week_start=a.week_start, lang=a.lang, theme=a.theme,
@@ -33,7 +38,8 @@ def main(argv=None):
                         note_pages=a.notes, font_path=a.font, paper=a.paper, link_scope=a.links,
                         start_month=a.start_month, months=a.months, holidays=a.holidays,
                         extras=tuple(x.strip() for x in a.extras.split(",") if x.strip()),
-                        daily_layout=a.daily_layout, note_style=a.note_style)
+                        daily_layout=a.daily_layout, note_style=a.note_style,
+                        custom_color=a.custom_color, font_family=a.font_family, owner=a.owner, motto=a.motto, title=a.title)
     # 기본 용지(태블릿 가로형)는 예전 파일 이름을 그대로 쓴다
     suffix = "" if a.paper == "tablet-landscape" else f"_{a.paper}"
     if (a.start_month, a.months) != (1, 12):   # 기본 기간이 아니면 시작 달·개월 수를 붙인다

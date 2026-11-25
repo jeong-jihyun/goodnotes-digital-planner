@@ -1,15 +1,18 @@
 // 플래너 설정의 기본값·고를 수 있는 값·검사 규칙.
 // 기준은 엔진(engine/config.py)이다. 다른 점은 하나: 노트는 1~50만 받는다(사용자 결정).
+import { THEMES, FONTS, CUSTOM_DEFAULT, isHex } from './themes.js'
 
 export const DEFAULTS = Object.freeze({
   year: 2027, weekStart: 'monday', lang: 'ko', theme: 'navy',
   paper: 'tablet-landscape', linkScope: 'full', weekly: true, daily: true, notes: 5,
   startMonth: 1, months: 12, holidays: true,
   extras: [], dailyLayout: 'plan-todo', noteStyle: 'grid',
+  customColor: CUSTOM_DEFAULT, fontFamily: 'gothic', title: '', owner: '', motto: '',
 })
 
 export const LIMITS = Object.freeze({
   year: { min: 2000, max: 2100 }, notes: { min: 1, max: 50 }, months: { min: 1, max: 18 },
+  title: 40, owner: 30, motto: 60,
 })
 
 export const OPTIONS = Object.freeze({
@@ -21,7 +24,8 @@ export const OPTIONS = Object.freeze({
     { value: 'a4-portrait', label: 'A4 인쇄형' },
   ],
   linkScope: [{ value: 'full', label: '전체 연결' }, { value: 'monthly', label: '월간 이동만' }],
-  theme: [{ value: 'navy' }, { value: 'sage' }, { value: 'rose' }, { value: 'mono' }],
+  theme: [...THEMES.map((t) => ({ value: t.id, label: t.name })), { value: 'custom', label: '직접 고르기' }],
+  fontFamily: FONTS,
   startMonth: Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}월` })),
   extras: [
     { value: 'goals', label: '목표', desc: '연간 목표 1쪽 + 달마다 목표·돌아보기' },
@@ -40,6 +44,8 @@ export const OPTIONS = Object.freeze({
 export const labelOf = (field, value) => (OPTIONS[field] || []).find((o) => o.value === value)?.label ?? String(value)
 
 const isInt = (v) => typeof v === 'number' && Number.isInteger(v)
+// 글자 수는 서버(파이썬)와 같게 '글자' 단위로 센다 (이모지도 1자)
+export const charCount = (v) => [...(v || '')].length
 
 // 잘못된 칸만 { 칸이름: '고칠 방법' } 으로 돌려준다. 빈 객체면 통과.
 export function validate(s) {
@@ -49,7 +55,12 @@ export function validate(s) {
   if (!isInt(s.months) || s.months < LIMITS.months.min || s.months > LIMITS.months.max) e.months = '1~18개월 사이 정수로 입력해 주세요'
   if (typeof s.holidays !== 'boolean') e.holidays = '켜기/끄기로 골라 주세요'
   if (!Array.isArray(s.extras) || s.extras.some((x) => !OPTIONS.extras.some((o) => o.value === x))) e.extras = '목록에서 골라 주세요'
-  for (const f of ['weekStart', 'lang', 'paper', 'linkScope', 'theme', 'dailyLayout', 'noteStyle']) {
+  for (const f of ['title', 'owner', 'motto']) {
+    if (typeof s[f] !== 'string') e[f] = '글자로 입력해 주세요'
+    else if (charCount(s[f]) > LIMITS[f]) e[f] = `${LIMITS[f]}자 이하로 줄여 주세요 (지금 ${charCount(s[f])}자)`
+  }
+  if (!isHex(s.customColor)) e.customColor = '#RRGGBB 모양의 색으로 입력해 주세요 (예: #6558D3)'
+  for (const f of ['weekStart', 'lang', 'paper', 'linkScope', 'theme', 'dailyLayout', 'noteStyle', 'fontFamily']) {
     if (!OPTIONS[f].some((o) => o.value === s[f])) e[f] = '목록에서 골라 주세요'
   }
   if (typeof s.weekly !== 'boolean') e.weekly = '켜기/끄기로 골라 주세요'

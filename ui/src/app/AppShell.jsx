@@ -31,7 +31,7 @@ export default function AppShell({ current, statusText, children }) {
               </a>
             ))}
           </nav>
-          <p className="tiny side-foot">UI 개발 중 · 8단계<br />PDF 생성 서버 연결</p>
+          <p className="tiny side-foot">UI 개발 중 · 9단계<br />PDF 생성 서버 연결</p>
         </aside>
         <main className="main">
           <div className="top">

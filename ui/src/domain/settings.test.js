@@ -1,7 +1,7 @@
 // 실행: npm test  (Node 내장 테스트, 추가 설치 없음)
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULTS, validate, estimatePages, weekCount, dayCount, sanitize, periodLabel } from './settings.js'
+import { DEFAULTS, OPTIONS, validate, estimatePages, weekCount, dayCount, sanitize, periodLabel } from './settings.js'
 
 test('기본값은 통과', () => assert.deepEqual(validate(DEFAULTS), {}))
 
@@ -71,4 +71,41 @@ test('추가 페이지 쪽수: 엔진 테스트와 같은 식', () => {
   assert.equal(all - base, 1 + 2 + 3 * 12)
   // 서버 테스트: 2개월 + 가계부, 주간·일간 없음, 노트 1 → 2 + 2 + 2 + 1
   assert.equal(estimatePages({ ...DEFAULTS, months: 2, weekly: false, daily: false, notes: 1, extras: ['budget'] }), 7)
+})
+
+// ---------- 9단계: 꾸미기 ----------
+import { mix, customSub, themeName, THEMES as T9 } from './themes.js'
+import { toRequest } from '../services/plannerApi.js'
+
+test('새 테마 4개와 직접 고르기가 선택지에 있다', () => {
+  for (const id of ['pastel', 'dark', 'vintage', 'terracotta', 'custom']) assert.ok(OPTIONS.theme.some((o) => o.value === id), id)
+  assert.equal(T9.length, 8)
+})
+
+test('직접 고른 색 검사: #RRGGBB 만 통과', () => {
+  assert.equal(validate({ ...DEFAULTS, theme: 'custom', customColor: '#FFD54F' }).customColor, undefined)
+  for (const bad of ['', 'red', '#12345', '#GGGGGG']) assert.ok(validate({ ...DEFAULTS, customColor: bad }).customColor, bad)
+})
+
+test('표지 글자 수는 이모지도 1자로 센다 (서버와 같게)', () => {
+  assert.equal(validate({ ...DEFAULTS, owner: '😀'.repeat(30) }).owner, undefined)
+  assert.ok(validate({ ...DEFAULTS, owner: '가'.repeat(31) }).owner)
+  assert.ok(validate({ ...DEFAULTS, motto: 'a'.repeat(61) }).motto)
+  assert.ok(validate({ ...DEFAULTS, title: 'a'.repeat(41) }).title)
+})
+
+test('보조색 계산이 엔진과 같다', () => {
+  assert.equal(mix('#000000', '#FFFFFF', 0.5), '#808080')
+  assert.equal(customSub('#BF603D'), '#F6E9E4')
+  assert.equal(themeName({ theme: 'custom', customColor: '#112233' }), '직접 고른 색 #112233')
+})
+
+test('요청에는 앞뒤 빈칸을 지운 표지 글과 대문자 색이 들어간다', () => {
+  const r = toRequest({ ...DEFAULTS, title: '  나의 플래너 ', customColor: '#abcdef', theme: 'custom' })
+  assert.equal(r.title, '나의 플래너'); assert.equal(r.customColor, '#ABCDEF'); assert.equal(r.fontFamily, 'gothic')
+})
+
+test('예전에 저장된 설정(꾸미기 칸 없음)도 기본값으로 채워진다', () => {
+  const s = sanitize({ year: 2028, theme: 'sage' })
+  assert.equal(s.year, 2028); assert.equal(s.fontFamily, 'gothic'); assert.equal(s.owner, ''); assert.equal(s.customColor, '#6558D3')
 })

@@ -1,6 +1,6 @@
 // 웹 브라우저 → Render 의 PDF 생성 서버 호출.
 // 서버 주소는 배포 설정(VITE_API_BASE)에서 받는다. 비어 있으면 '서버 미연결'로 보여 준다.
-export const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
+export const API_BASE = (import.meta.env?.VITE_API_BASE || '').replace(/\/$/, '')
 export const apiConfigured = () => !!API_BASE
 
 export class ApiError extends Error {
@@ -32,6 +32,9 @@ export const toRequest = (s) => ({
   linkScope: s.linkScope, weekly: s.weekly, daily: s.daily, notes: s.notes,
   startMonth: s.startMonth, months: s.months, holidays: s.holidays,
   extras: s.extras, dailyLayout: s.dailyLayout, noteStyle: s.noteStyle,
+  // 꾸미기: 앞뒤 빈칸은 지워서 보낸다 (빈칸만 있으면 '안 씀')
+  customColor: s.customColor.toUpperCase(), fontFamily: s.fontFamily,
+  title: s.title.trim(), owner: s.owner.trim(), motto: s.motto.trim(),
 })
 
 export const health = () => call('/health', { timeout: 90000 })

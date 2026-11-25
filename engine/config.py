@@ -2,12 +2,79 @@
 from dataclasses import dataclass, field
 import re
 
+# 테마 색: main(머리띠·선), sub(연한 칸·탭), text(글자), bg(종이), on_main(머리띠 위 글자)
 THEMES = {
     "navy": {"main": "#1F3864", "sub": "#DCE6F5", "text": "#222222"},
     "sage": {"main": "#5B7F6A", "sub": "#E3EEE7", "text": "#222222"},
     "rose": {"main": "#B45A6E", "sub": "#F7E3E8", "text": "#222222"},
     "mono": {"main": "#333333", "sub": "#EEEEEE", "text": "#111111"},
+    # 9단계 추가
+    "pastel": {"main": "#8C7BC4", "sub": "#ECE6F7", "text": "#3E3852"},
+    "dark": {"main": "#8AB4F8", "sub": "#2E3446", "text": "#E7EAF1", "bg": "#1C2030", "on_main": "#1C2030"},
+    "vintage": {"main": "#7A5C3E", "sub": "#EEE2CC", "text": "#4A3828", "bg": "#FBF6EA"},
+    "terracotta": {"main": "#BF603D", "sub": "#F6E1D6", "text": "#4F2D21"},
 }
+THEME_DEFAULTS = {"bg": "#FFFFFF", "on_main": "#FFFFFF"}
+
+# 글꼴 (모두 나눔 글꼴, SIL OFL — 상업용 PDF 에 넣어도 됨). 같은 폴더에 있는 파일 이름
+FONTS = {
+    "gothic": "NanumGothic.ttf",
+    "myeongjo": "NanumMyeongjo.ttf",
+    "barun": "NanumBarunGothic.ttf",
+    "squareround": "NanumSquareRoundR.ttf",
+    "pen": "NanumPen.ttf",
+}
+
+
+def _hex(c):
+    c = c.lstrip("#")
+    return tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+
+
+def _mix(a, b, t):
+    """색 a 와 b 를 t(0~1) 비율로 섞는다."""
+    ra, rb = _hex(a), _hex(b)
+    return "#" + "".join(f"{round(x + (y - x) * t):02X}" for x, y in zip(ra, rb))
+
+
+def _luminance(c):
+    r, g, b = (v / 255 for v in _hex(c))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def custom_theme(color):
+    """메인색 하나로 나머지 색을 맞춘다: 아주 연한 보조색, 진한 글자색, 머리띠 위 글자색(밝기에 따라)."""
+    return {
+        "main": color.upper(),
+        "sub": _mix(color, "#FFFFFF", 0.86),
+        "text": _mix(color, "#000000", 0.62),
+        "on_main": "#222222" if _luminance(color) > 0.62 else "#FFFFFF",
+    }
+
+
+def contrast(a, b):
+    """두 색의 명암 대비 (WCAG 방식, 1~21). 4.5 이상이면 작은 글자도 잘 읽힘."""
+    def lum(c):
+        def ch(v):
+            v /= 255
+            return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+        r, g, b = (ch(v) for v in _hex(c))
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    la, lb = sorted((lum(a), lum(b)), reverse=True)
+    return (la + 0.05) / (lb + 0.05)
+
+
+def theme_colors(cfg):
+    t = custom_theme(cfg.custom_color) if cfg.theme == "custom" else THEMES[cfg.theme]
+    t = {**THEME_DEFAULTS, **t}
+    # ink: 종이 위에 그리는 날짜·제목·선 색. 메인색이 너무 밝아(노랑 등) 안 읽히면 읽힐 때까지 진하게
+    ink, toward = t["main"], ("#000000" if contrast(t["bg"], "#000000") > contrast(t["bg"], "#FFFFFF") else "#FFFFFF")
+    step = 0
+    while contrast(ink, t["bg"]) < 3.0 and step < 10:
+        step += 1
+        ink = _mix(t["main"], toward, step * 0.1)
+    t["ink"] = ink
+    return t
 
 # 용지 모양 (폭, 높이 pt). 1pt = 1/72인치
 PAPERS = {
@@ -32,8 +99,12 @@ class PlannerConfig:
     include_weekly: bool = True
     include_daily: bool = True
     note_pages: int = 5
-    title: str = ""
+    title: str = ""              # 표지 제목 (비우면 '디지털 플래너')
     font_path: str = ""          # 선택: 한글 TTF 경로 (없으면 내장 CID 폰트)
+    owner: str = ""              # 표지 이름
+    motto: str = ""              # 표지 한 줄 다짐
+    custom_color: str = ""       # theme="custom" 일 때 메인색 #RRGGBB
+    font_family: str = "gothic"  # FONTS 중 하나
     paper: str = "tablet-landscape"   # PAPERS 중 하나
     link_scope: str = "full"          # full | monthly
     start_month: int = 1              # 기간 시작 달 (1~12). year 는 시작 연도
@@ -50,8 +121,16 @@ class PlannerConfig:
             raise ValueError("week_start는 monday 또는 sunday")
         if self.lang not in LANGS:
             raise ValueError("lang은 ko, en, ko-en 중 하나")
-        if self.theme not in THEMES:
-            raise ValueError(f"theme은 {list(THEMES)} 중 하나")
+        if self.theme == "custom":
+            if not re.fullmatch(r"#[0-9A-Fa-f]{6}", self.custom_color or ""):
+                raise ValueError("custom 테마는 custom_color(#RRGGBB)가 필요합니다")
+        elif self.theme not in THEMES:
+            raise ValueError(f"theme은 {list(THEMES)} 또는 custom")
+        if self.font_family not in FONTS:
+            raise ValueError(f"font_family는 {list(FONTS)} 중 하나")
+        for name, val, n in (("title", self.title, 40), ("owner", self.owner, 30), ("motto", self.motto, 60)):
+            if len(val or "") > n:
+                raise ValueError(f"{name}은 {n}자 이하")
         if not 0 <= self.note_pages <= 50:
             raise ValueError("note_pages는 0~50")
         if self.paper not in PAPERS:

@@ -3,7 +3,7 @@ import { href } from '../hooks/useHashRoute.js'
 import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
 import { usePreview } from '../hooks/usePreview.js'
 import { labelOf, periodLabel } from '../domain/settings.js'
-import { THEMES } from '../domain/themes.js'
+import { themeName } from '../domain/themes.js'
 import { apiConfigured } from '../services/plannerApi.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Card, { Grid } from '../components/Card.jsx'
@@ -89,7 +89,8 @@ export default function PreviewPage() {
           <Row end={<b>{valid ? periodLabel(s) : '—'}</b>}>기간</Row>
           <Row end={<b>{labelOf('paper', s.paper)}</b>}>용지</Row>
           <Row end={<b>{labelOf('lang', s.lang)}</b>}>언어</Row>
-          <Row end={<b>{THEMES.find((t) => t.id === s.theme)?.name}</b>}>테마</Row>
+          <Row end={<b>{themeName(s)}</b>}>테마</Row>
+          <Row end={<b>{labelOf('fontFamily', s.fontFamily)}</b>}>글꼴</Row>
           <Row end={<b>{s.holidays ? '표시' : '안 함'}</b>}>공휴일</Row>
           <Row end={<b>{s.extras.length ? `${s.extras.length}종` : '없음'}</b>}>추가 페이지</Row>
           <Row end={pv.data ? <b>{pv.data.pageCount.toLocaleString()}쪽</b> : pages ? <span className="tiny">약 {pages.toLocaleString()}쪽</span> : <StatusTag tone="error">입력 확인</StatusTag>}>페이지</Row>

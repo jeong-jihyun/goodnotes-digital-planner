@@ -13,13 +13,25 @@ function toArgs(s) {
   if (!['tablet-landscape', 'goodnotes-portrait', 'a4-portrait'].includes(paper)) throw new Error('용지 오류')
   const links = s.linkScope || 'full'
   if (!['full', 'monthly'].includes(links)) throw new Error('링크 범위 오류')
-  if (!['navy', 'sage', 'rose', 'mono'].includes(s.theme)) throw new Error('테마 오류')
+  if (!['navy', 'sage', 'rose', 'mono', 'pastel', 'dark', 'vintage', 'terracotta', 'custom'].includes(s.theme)) throw new Error('테마 오류')
+  const color = s.customColor || ''
+  if (s.theme === 'custom' && !/^#[0-9A-Fa-f]{6}$/.test(color)) throw new Error('색 오류')
+  const font = s.fontFamily || 'gothic'
+  if (!['gothic', 'myeongjo', 'barun', 'squareround', 'pen'].includes(font)) throw new Error('글꼴 오류')
+  const text = (v, n) => { const t = String(v || '').trim(); if ([...t].length > n) throw new Error('표지 글 오류'); return t }
+  const title = text(s.title, 40), owner = text(s.owner, 30), motto = text(s.motto, 60)
   const notes = Number(s.notes)
   if (!Number.isInteger(notes) || notes < 0 || notes > 50) throw new Error('노트 수 오류')
   const a = ['-m', 'engine.cli', '--year', String(year), '--week-start', s.weekStart, '--lang', s.lang,
     '--theme', s.theme, '--notes', String(notes), '--paper', paper, '--links', links, '--out', path.join(app.getPath('documents'), 'planner_output')]
   if (!s.weekly) a.push('--no-weekly')
   if (!s.daily) a.push('--no-daily')
+  // execFile 은 셸을 거치지 않으므로 표지 글은 그대로 인자로 넘겨도 안전하다
+  a.push('--font-family', font)
+  if (s.theme === 'custom') a.push('--custom-color', color)
+  if (title) a.push('--title', title)
+  if (owner) a.push('--owner', owner)
+  if (motto) a.push('--motto', motto)
   return a
 }
 

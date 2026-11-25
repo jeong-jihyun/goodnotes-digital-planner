@@ -3,7 +3,7 @@
 FROM python:3.11-slim
 
 # 한글 글꼴(나눔고딕, OFL) — PDF에 내장해 굿노트에서 한글이 보이게 한다
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-nanum \
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-nanum fonts-nanum-extra \
     && rm -rf /var/lib/apt/lists/*
 
 RUN useradd -m -u 1000 app

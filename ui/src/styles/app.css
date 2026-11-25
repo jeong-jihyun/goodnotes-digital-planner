@@ -200,3 +200,18 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 @media (max-width: 420px) { .multi { grid-template-columns: 1fr; } }
 .form-sec { font-size: 13px; color: var(--brand); margin: 22px 0 12px; padding-top: 16px; border-top: 1px solid var(--line); }
 .form-sec:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* 9단계: 꾸미기 — 직접 고르기 카드는 한 줄 전체, 색 고르는 칸 */
+.theme-custom { grid-column: 1 / -1; grid-template-columns: 96px 1fr; align-items: center; }
+.theme-custom .swatch { height: 34px; }
+.color-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.color-pick input[type="color"] { width: 52px; height: 44px; padding: 2px; border: 1px solid var(--input-line); border-radius: var(--radius-input); background: #fff; cursor: pointer; }
+.color-pick .hex { width: 120px; min-height: 44px; font-family: ui-monospace, monospace; text-transform: uppercase; }
+.color-pick .field-hint { flex-basis: 100%; }
+.color-pick.has-error .hex { border-color: var(--err-text); }
+.color-pick.has-error .field-hint { color: var(--err-text); }
+.multi-check.round { border-radius: 50%; }
+.cover-fields { display: grid; gap: 0 12px; grid-template-columns: 1fr 1fr; }
+.cover-fields > :last-child { grid-column: 1 / -1; }
+@media (max-width: 740px) { .cover-fields { grid-template-columns: 1fr; } }
+.dot-color { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line); }

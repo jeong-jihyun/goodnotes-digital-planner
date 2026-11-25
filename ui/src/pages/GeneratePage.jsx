@@ -10,7 +10,7 @@ import { href } from '../hooks/useHashRoute.js'
 import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
 import { useGeneration } from '../hooks/useGeneration.jsx'
 import { labelOf, periodLabel } from '../domain/settings.js'
-import { THEMES } from '../domain/themes.js'
+import { themeName } from '../domain/themes.js'
 import * as api from '../services/plannerApi.js'
 
 // 진행 단계 (서버가 실제로 알려 주는 상태만 표시, 퍼센트는 지어내지 않음)
@@ -95,7 +95,7 @@ export default function GeneratePage() {
           <Row end={valid ? <StatusTag tone="ok">확인</StatusTag> : <Button variant="alt" href={href('create')}>고치러 가기</Button>}>
             기본 정보 입력{valid && pages ? ` · 약 ${pages.toLocaleString()}쪽` : ''}
           </Row>
-          <Row end={<span className="tiny">{valid ? periodLabel(settings) + ' · ' : ''}{labelOf('paper', settings.paper)} · {labelOf('lang', settings.lang)} · {THEMES.find((t) => t.id === settings.theme)?.name}{settings.holidays ? ' · 공휴일' : ''}</span>}>
+          <Row end={<span className="tiny">{valid ? periodLabel(settings) + ' · ' : ''}{labelOf('paper', settings.paper)} · {labelOf('lang', settings.lang)} · {themeName(settings)}{settings.holidays ? ' · 공휴일' : ''}</span>}>
             고른 설정
           </Row>
           {!isDesktop && <Row end={serverRow}>PDF 만드는 서버</Row>}

@@ -19,7 +19,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 # 저장소 안에서 실행할 때도, Space 안에서 실행할 때도 engine 을 찾을 수 있게
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +28,7 @@ for p in (ROOT, os.path.dirname(ROOT)):
     if os.path.isdir(os.path.join(p, "engine")) and p not in sys.path:
         sys.path.insert(0, p)
 
-from engine.config import PlannerConfig, THEMES, PAPERS  # noqa: E402
+from engine.config import PlannerConfig, THEMES, PAPERS, FONTS  # noqa: E402
 from engine.planner import generate  # noqa: E402
 from engine.validate import validate_pdf  # noqa: E402
 
@@ -60,6 +61,25 @@ def font_ready():
     return os.path.exists(FONT_PATH)
 
 
+def fonts_available():
+    """서버에 실제로 있는 글꼴만 (없으면 고르게 하지 않음)."""
+    base = os.path.dirname(FONT_PATH)
+    return [k for k, f in FONTS.items() if os.path.exists(os.path.join(base, f))]
+
+
+def needs_korean(s):
+    return s.lang in ("ko", "ko-en") or any(ord(ch) > 127 for ch in s.title + s.owner + s.motto)
+
+
+def font_problem(s):
+    """만들 수 없는 이유(없으면 None)."""
+    if needs_korean(s) and not font_ready():
+        return "서버에 한글 글꼴이 없어 만들 수 없습니다."
+    if s.fontFamily != "gothic" and s.fontFamily not in fonts_available():
+        return "고른 글꼴이 서버에 없습니다. 다른 글꼴을 골라 주세요."
+    return None
+
+
 def now_iso():
     return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
@@ -76,7 +96,11 @@ class PlannerSettings(BaseModel):
     year: int = Field(ge=2000, le=2100)
     weekStart: Literal["monday", "sunday"]
     lang: Literal["ko", "en", "ko-en"]
-    theme: Literal["navy", "sage", "rose", "mono"]
+    theme: Literal["navy", "sage", "rose", "mono", "pastel", "dark", "vintage", "terracotta", "custom"]
+    customColor: str = Field(default="", pattern=r"^(#[0-9A-Fa-f]{6})?$")
+    fontFamily: Literal["gothic", "myeongjo", "barun", "squareround", "pen"] = "gothic"
+    owner: str = Field(default="", max_length=30)
+    motto: str = Field(default="", max_length=60)
     paper: Literal["tablet-landscape", "goodnotes-portrait", "a4-portrait"] = "tablet-landscape"
     linkScope: Literal["full", "monthly"] = "full"
     weekly: bool
@@ -90,10 +114,18 @@ class PlannerSettings(BaseModel):
     dailyLayout: Literal["plan-todo", "timetable", "lined"] = "plan-todo"
     noteStyle: Literal["grid", "lined", "dot", "blank"] = "grid"
 
+    @model_validator(mode="after")
+    def _custom_needs_color(self):
+        if self.theme == "custom" and not self.customColor:
+            raise PydanticCustomError("custom_color", "customColor 필요")
+        return self
+
 
 FIELD_MSG = {
     "year": "2000~2100 사이 정수여야 합니다", "notes": "1~50 사이 정수여야 합니다",
-    "weekStart": "monday 또는 sunday", "lang": "ko, en, ko-en 중 하나", "theme": "navy, sage, rose, mono 중 하나",
+    "weekStart": "monday 또는 sunday", "lang": "ko, en, ko-en 중 하나", "theme": "navy, sage, rose, mono, pastel, dark, vintage, terracotta, custom 중 하나",
+    "customColor": "#RRGGBB 형식 색 (custom 테마일 때 필요)", "fontFamily": "gothic, myeongjo, barun, squareround, pen 중 하나",
+    "owner": "30자 이하 글자", "motto": "60자 이하 글자",
     "paper": "tablet-landscape, goodnotes-portrait, a4-portrait 중 하나", "linkScope": "full 또는 monthly",
     "weekly": "true 또는 false", "daily": "true 또는 false", "title": "40자 이하 글자",
     "startMonth": "1~12 사이 정수여야 합니다", "months": "1~18 사이 정수여야 합니다", "holidays": "true 또는 false",
@@ -108,6 +140,8 @@ async def on_invalid(request: Request, exc: RequestValidationError):
     for e in exc.errors():
         loc = [str(x) for x in e.get("loc", []) if x != "body"]
         field = loc[0] if loc else "body"
+        if e.get("type") == "custom_color":
+            field = "customColor"
         if e.get("type") == "extra_forbidden":
             reason = "허용되지 않은 항목입니다"
         elif field == "body":
@@ -123,7 +157,8 @@ def to_config(s: PlannerSettings, font):
                          include_weekly=s.weekly, include_daily=s.daily, note_pages=s.notes,
                          title=s.title, paper=s.paper, link_scope=s.linkScope, font_path=font,
                          start_month=s.startMonth, months=s.months, holidays=s.holidays,
-                         extras=tuple(s.extras), daily_layout=s.dailyLayout, note_style=s.noteStyle)
+                         extras=tuple(s.extras), daily_layout=s.dailyLayout, note_style=s.noteStyle,
+                         custom_color=s.customColor, font_family=s.fontFamily, owner=s.owner, motto=s.motto)
 
 
 # ---------- 작업 저장소 (메모리) ----------
@@ -160,10 +195,10 @@ def run_job(jid, settings: PlannerSettings):
     try:
         with SLOTS:
             set_job(jid, status="processing", stage="pdf_generation")
-            needs_korean = settings.lang in ("ko", "ko-en") or any(ord(ch) > 127 for ch in settings.title)
-            if needs_korean and not font_ready():
+            problem = font_problem(settings)
+            if problem:
                 set_job(jid, status="failed", stage="failed",
-                        error={"code": "GENERATION_FAILED", "message": "서버에 한글 글꼴이 없어 만들 수 없습니다."})
+                        error={"code": "GENERATION_FAILED", "message": problem})
                 return
             name = f"planner_{settings.year}_{settings.lang}_{settings.theme}"
             if (settings.startMonth, settings.months) != (1, 12):
@@ -225,7 +260,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "fontReady": font_ready(), "running": MAX_RUNNING - SLOTS._value, "time": now_iso(),
+    return {"status": "ok", "fontReady": font_ready(), "fonts": fonts_available(), "running": MAX_RUNNING - SLOTS._value, "time": now_iso(),
             "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]}   # Render 가 넣어 주는 배포 커밋
 
 
@@ -235,13 +270,15 @@ def options():
         "defaults": {"year": 2027, "weekStart": "monday", "lang": "ko", "theme": "navy",
                      "paper": "tablet-landscape", "linkScope": "full", "weekly": True, "daily": True, "notes": 5,
                      "startMonth": 1, "months": 12, "holidays": True,
-                     "extras": [], "dailyLayout": "plan-todo", "noteStyle": "grid"},
+                     "extras": [], "dailyLayout": "plan-todo", "noteStyle": "grid",
+                     "customColor": "", "fontFamily": "gothic", "owner": "", "motto": ""},
         "constraints": {"year": {"min": 2000, "max": 2100}, "weekStart": ["monday", "sunday"],
-                        "lang": ["ko", "en", "ko-en"], "theme": list(THEMES), "paper": list(PAPERS),
+                        "lang": ["ko", "en", "ko-en"], "theme": list(THEMES) + ["custom"], "paper": list(PAPERS),
                         "linkScope": ["full", "monthly"], "notes": {"min": 1, "max": 50},
                         "startMonth": {"min": 1, "max": 12}, "months": {"min": 1, "max": 18},
                         "extras": ["goals", "habits", "reading", "budget"],
-                        "dailyLayout": ["plan-todo", "timetable", "lined"], "noteStyle": ["grid", "lined", "dot", "blank"]},
+                        "dailyLayout": ["plan-todo", "timetable", "lined"], "noteStyle": ["grid", "lined", "dot", "blank"],
+                        "fontFamily": fonts_available(), "owner": {"maxLength": 30}, "motto": {"maxLength": 60}},
     }
 
 
@@ -325,9 +362,9 @@ def create_preview(settings: PlannerSettings, request: Request):
         if len(hits) >= MAX_PREVIEW_PER_IP_PER_10MIN:
             return error(429, "RATE_LIMITED", "미리보기를 너무 자주 요청했습니다. 잠시 후 다시 시도해 주세요.")
         hits.append(time.time())
-    needs_korean = settings.lang in ("ko", "ko-en") or any(ord(ch) > 127 for ch in settings.title)
-    if needs_korean and not font_ready():
-        return error(503, "FONT_MISSING", "서버에 한글 글꼴이 없어 미리보기를 만들 수 없습니다.")
+    problem = font_problem(settings)
+    if problem:
+        return error(503, "FONT_MISSING", problem.replace("만들 수", "미리보기를 만들 수", 1))
     tmp = tempfile.mkdtemp(dir=WORK_DIR)
     try:
         import pypdfium2 as pdfium
