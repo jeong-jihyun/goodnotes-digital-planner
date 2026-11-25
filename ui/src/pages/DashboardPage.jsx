@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const last = history[0]
   return (
     <section>
-      <PageHeader title="오늘의 작업 대시보드" sub="플래너 스튜디오에서 플래너 PDF 제작부터 상품 등록 준비까지 한곳에서 관리합니다." />
+      <PageHeader title="오늘의 작업 대시보드" sub="플래너 PDF 제작부터 상품 등록 준비까지, Planner Studio 한곳에서 끝냅니다." />
       <Grid>
         <Card size="stat"><Metric label="테마" value={`${THEMES.length}종 + 내 색`} hint={`글꼴 ${FONTS.length}종 · 기간 1~18개월`} /></Card>
         <Card size="stat"><Metric label="만든 PDF" value={`${history.length}개`} hint={`자주 쓰는 설정 ${presets.length}개`} /></Card>

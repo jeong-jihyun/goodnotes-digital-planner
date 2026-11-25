@@ -22,7 +22,7 @@ const PAGES = {
 export default function App() {
   const path = useHashRoute()
   const Page = PAGES[path]
-  const statusText = window.planner ? '데스크톱 모드' : '10단계 완성'
+  const statusText = window.planner ? '데스크톱 모드' : ''   // 웹에서는 표시 없음
   return (
     <ToastProvider>
       <PlannerSettingsProvider>

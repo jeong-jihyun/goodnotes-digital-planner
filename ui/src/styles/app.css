@@ -7,7 +7,7 @@ button, input, select, textarea { font-family: inherit; }
 .app { max-width: var(--container); margin: auto; min-height: 100vh; display: grid; grid-template-columns: var(--sidebar-w) 1fr; transition: grid-template-columns .2s; }
 .app.collapsed { grid-template-columns: var(--sidebar-w-collapsed) 1fr; }
 .side { background: var(--surface); border-right: 1px solid var(--line); padding: 24px 15px; position: sticky; top: 0; height: 100vh; overflow: hidden; }
-.side-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; padding-bottom: 28px; }
+.side-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-bottom: 28px; }
 .brand { font-weight: bold; font-size: 15px; padding: 8px 6px 0 10px; min-width: 0; white-space: nowrap; }
 .brand-mini { display: none; }
 .side-toggle { flex: none; width: 40px; height: 40px; border: 1px solid var(--line); background: #fff; border-radius: var(--radius-btn); color: var(--nav-text); cursor: pointer; font-size: 16px; }
@@ -229,3 +229,19 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 .preset-add .field { flex: 1; margin-bottom: 0; }
 .btn.danger { background: var(--err-bg); color: var(--err-text); }
 .mono { font-family: ui-monospace, monospace; }
+
+/* 브랜드: 로고 + Planner Studio */
+.brand { display: block; text-decoration: none; color: var(--ink); padding: 4px 6px 0 6px; }
+.brand-lockup { display: inline-flex; align-items: center; gap: 8px; }
+.logo { flex: none; display: block; border-radius: 10px; box-shadow: 0 4px 12px rgba(101, 88, 211, .25); }
+.brand-word { font-size: 16px; font-weight: 800; letter-spacing: -.4px; color: var(--ink); white-space: nowrap; }
+.brand-word b { color: var(--brand); margin-left: 2px; }
+.side .brand { min-width: 0; overflow: visible; }
+.app.collapsed .brand-mini { display: block; }
+.app.collapsed .brand { padding: 4px 0 0; display: flex; justify-content: center; }
+.top-brand { display: none; text-decoration: none; }
+.top:not(:has(.status)) { margin-bottom: 0; }
+@media (max-width: 740px) {
+  .top, .top:not(:has(.status)) { margin-bottom: 22px; }
+  .top-brand { display: inline-flex; }
+}
