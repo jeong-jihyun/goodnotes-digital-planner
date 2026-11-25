@@ -215,3 +215,17 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 .cover-fields > :last-child { grid-column: 1 / -1; }
 @media (max-width: 740px) { .cover-fields { grid-template-columns: 1fr; } }
 .dot-color { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 1px solid var(--line); }
+
+/* 10단계: 상품 대표 이미지·기록 목록 */
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 10px; }
+.shot { margin: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper-bg); }
+.shot img { display: block; width: 100%; height: auto; }
+.shot figcaption { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; background: #fff; font-size: var(--fs-small); }
+.hist { display: grid; gap: 10px; }
+.hist-item { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 6px; }
+.hist-item .meta { font-size: var(--fs-tiny); color: var(--muted); }
+.hist-item .btnline { margin-top: 2px; }
+.preset-add { display: flex; gap: 8px; align-items: flex-end; }
+.preset-add .field { flex: 1; margin-bottom: 0; }
+.btn.danger { background: var(--err-bg); color: var(--err-text); }
+.mono { font-family: ui-monospace, monospace; }

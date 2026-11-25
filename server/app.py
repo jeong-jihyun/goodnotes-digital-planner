@@ -31,6 +31,7 @@ for p in (ROOT, os.path.dirname(ROOT)):
 from engine.config import PlannerConfig, THEMES, PAPERS, FONTS  # noqa: E402
 from engine.planner import generate  # noqa: E402
 from engine.validate import validate_pdf  # noqa: E402
+from engine.copy_text import make_copy_both  # noqa: E402
 
 FONT_PATH = os.environ.get("PLANNER_FONT", "/usr/share/fonts/truetype/nanum/NanumGothic.ttf")
 KEEP_SECONDS = int(os.environ.get("KEEP_SECONDS", "3600"))      # 결과 파일 보관 1시간
@@ -207,7 +208,8 @@ def run_job(jid, settings: PlannerSettings):
                 name += f"_{settings.paper}"
             pdf = os.path.join(job_dir, name + ".pdf")
             t0 = time.time()
-            info = generate(to_config(settings, FONT_PATH if font_ready() else ""), pdf)
+            cfg = to_config(settings, FONT_PATH if font_ready() else "")
+            info = generate(cfg, pdf)
             set_job(jid, status="verifying", stage="pdf_validation")
             check = validate_pdf(pdf)
             if not check["ok"]:
@@ -224,6 +226,8 @@ def run_job(jid, settings: PlannerSettings):
                 "validationPassed": True, "expectedPages": info["pages"],
                 "seconds": round(time.time() - t0, 1),
                 "downloadUrl": f"/api/v1/generations/{jid}/download",
+                # 상품 등록 화면에서 쓰는 문구 초안 (실제 쪽수·링크 수 기준, 한국어·영어)
+                "copy": make_copy_both(cfg, {"pages": check["pages"], "links": check["links"]}),
             })
     except Exception:  # 상세 오류는 응답에 넣지 않는다
         set_job(jid, status="failed", stage="failed",

@@ -24,10 +24,12 @@ export function PlannerSettingsProvider({ children }) {
 
   const set = useCallback((field, value) => setSettings((s) => ({ ...s, [field]: value })), [])
   const reset = useCallback(() => setSettings({ ...DEFAULTS }), [])
+  // 기록·저장한 설정 불러오기: 모르는 칸·틀린 값은 기본값으로 (예전 버전 기록도 안전하게)
+  const replace = useCallback((obj) => setSettings(sanitize({ ...DEFAULTS, ...obj })), [])
 
   const value = useMemo(() => ({
-    settings, set, reset, errors, valid, savedAt, pages: estimatePages(settings),
-  }), [settings, set, reset, errors, valid, savedAt])
+    settings, set, reset, replace, errors, valid, savedAt, pages: estimatePages(settings),
+  }), [settings, set, reset, replace, errors, valid, savedAt])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 

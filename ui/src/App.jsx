@@ -4,6 +4,7 @@ import { useHashRoute } from './hooks/useHashRoute.js'
 import { ToastProvider } from './components/Toast.jsx'
 import { PlannerSettingsProvider } from './hooks/usePlannerSettings.jsx'
 import { GenerationProvider } from './hooks/useGeneration.jsx'
+import { HistoryProvider } from './hooks/useHistory.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import CreatePage from './pages/CreatePage.jsx'
 import PreviewPage from './pages/PreviewPage.jsx'
@@ -21,13 +22,15 @@ const PAGES = {
 export default function App() {
   const path = useHashRoute()
   const Page = PAGES[path]
-  const statusText = window.planner ? '데스크톱 모드' : '개발 중 · 9단계'
+  const statusText = window.planner ? '데스크톱 모드' : '10단계 완성'
   return (
     <ToastProvider>
       <PlannerSettingsProvider>
-        <GenerationProvider>
-          <AppShell current={path} statusText={statusText}><Page /></AppShell>
-        </GenerationProvider>
+        <HistoryProvider>
+          <GenerationProvider>
+            <AppShell current={path} statusText={statusText}><Page /></AppShell>
+          </GenerationProvider>
+        </HistoryProvider>
       </PlannerSettingsProvider>
     </ToastProvider>
   )

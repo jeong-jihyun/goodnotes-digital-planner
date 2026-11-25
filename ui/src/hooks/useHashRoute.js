@@ -19,3 +19,4 @@ export function useHashRoute() {
 }
 
 export const href = (path) => `#/${path}`
+export const navigate = (path) => { window.location.hash = '/' + path }

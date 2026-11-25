@@ -5,7 +5,7 @@ from .config import PlannerConfig
 from .planner import generate
 from .validate import validate_pdf
 from .preview import make_previews
-from .copy_text import make_copy
+from .copy_text import make_copy, make_copy_both
 
 
 def main(argv=None):
@@ -48,7 +48,7 @@ def main(argv=None):
     info = generate(cfg, pdf)
     check = validate_pdf(pdf)
     previews = make_previews(pdf, os.path.join(a.out, "previews"))
-    text = make_copy(cfg, info)
+    text = {**make_copy(cfg, info), "both": make_copy_both(cfg, info)}
     with open(os.path.join(a.out, "listing_copy.json"), "w", encoding="utf-8") as f:
         json.dump(text, f, ensure_ascii=False, indent=2)
     result = {"pdf": pdf, "check": check, "previews": previews}

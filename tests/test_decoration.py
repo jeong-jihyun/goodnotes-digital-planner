@@ -158,3 +158,51 @@ def test_server_missing_font_file_is_clear_error(api, monkeypatch):
     r = c.post("/api/v1/previews", json={**GOOD, "fontFamily": "pen"})
     assert r.status_code == 503
     assert "글꼴" in r.json()["message"]
+
+
+# ---------- 10단계: 상품 문구 ----------
+from engine.copy_text import make_copy, make_copy_both  # noqa: E402
+
+
+def test_copy_both_languages_and_design_line():
+    cfg = PlannerConfig(year=2027, lang="en", theme="dark", font_family="pen")
+    both = make_copy_both(cfg, {"pages": 100, "links": 50})
+    assert set(both) == {"ko", "en"}
+    assert "다크 테마" in both["ko"]["description"] and "나눔손글씨 펜" in both["ko"]["description"]
+    assert "플래너 글자: 영어" in both["ko"]["description"]
+    assert "dark mode theme" in both["en"]["description"] and "handwritten" in both["en"]["description"]
+    assert "100" in both["en"]["description"]
+    # 예전처럼 lang 을 안 주면 플래너 언어를 따른다
+    assert make_copy(cfg, {"pages": 1, "links": 1})["title"] == both["en"]["title"]
+
+
+def test_copy_en_fits_etsy_limits():
+    for lang in ("ko", "en", "ko-en"):
+        cfg = PlannerConfig(year=2027, lang=lang, start_month=3, months=18)
+        en = make_copy(cfg, {"pages": 900, "links": 900}, "en")
+        assert len(en["title"]) <= 140
+        assert len(en["tags"]) <= 13 and all(len(t) <= 20 for t in en["tags"])
+
+
+@pytest.mark.skipif(not HAS_FONT, reason="한글 글꼴 없음")
+def test_server_result_has_copy(api):
+    _, c = api
+    jid = c.post("/api/v1/generations", json={**GOOD, "theme": "vintage"}).json()["generationId"]
+    t0 = time.time()
+    while time.time() - t0 < 60:
+        s = c.get(f"/api/v1/generations/{jid}").json()
+        if s["status"] in ("succeeded", "failed"):
+            break
+        time.sleep(0.2)
+    copy = s["result"]["copy"]
+    assert copy["ko"]["title"] and copy["en"]["tags"]
+    assert str(s["result"]["pageCount"]) in copy["en"]["description"]
+
+
+def test_copy_title_matches_pages():
+    off = make_copy(PlannerConfig(year=2027, include_weekly=False, include_daily=False), {"pages": 1, "links": 1}, "en")
+    assert "Weekly" not in off["title"] and "Daily" not in off["title"]
+    on = make_copy(PlannerConfig(year=2027), {"pages": 1, "links": 1}, "en")
+    assert "Weekly Daily" in on["title"]
+    ko = make_copy(PlannerConfig(year=2027, include_daily=False), {"pages": 1, "links": 1}, "ko")
+    assert "주간" in ko["title"] and "일간" not in ko["title"]

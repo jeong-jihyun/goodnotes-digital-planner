@@ -2,11 +2,12 @@ import React, { useEffect, useRef, useState } from 'react'
 import PageHeader from '../components/PageHeader.jsx'
 import Card, { Grid } from '../components/Card.jsx'
 import Button, { ButtonLine } from '../components/Button.jsx'
+import { useHistory } from '../hooks/useHistory.jsx'
 import Row from '../components/Row.jsx'
 import StatusTag from '../components/StatusTag.jsx'
 import Notice from '../components/Notice.jsx'
 import ProgressBar from '../components/ProgressBar.jsx'
-import { href } from '../hooks/useHashRoute.js'
+import { href, navigate } from '../hooks/useHashRoute.js'
 import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
 import { useGeneration } from '../hooks/useGeneration.jsx'
 import { labelOf, periodLabel } from '../domain/settings.js'
@@ -38,6 +39,7 @@ const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString('ko-KR'
 export default function GeneratePage() {
   const { settings, valid, pages } = usePlannerSettings()
   const gen = useGeneration()
+  const { setSelectedId } = useHistory()
   const [server, setServer] = useState(api.apiConfigured() ? 'checking' : 'none')
   const [log, setLog] = useState('')
   const [desktopBusy, setDesktopBusy] = useState(false)
@@ -155,6 +157,7 @@ export default function GeneratePage() {
             {gen.job?.expiresAt && <Row end={<b>{fmtTime(gen.job.expiresAt)}까지</b>}>내려받기 가능</Row>}
             <ButtonLine>
               <Button href={api.downloadUrl(gen.id)} target="_blank" rel="noopener">PDF 내려받기</Button>
+              {res.copy && <Button variant="alt" onClick={() => { setSelectedId(gen.id); navigate('listing') }}>상품 문구 보기</Button>}
               <Button variant="alt" onClick={gen.reset}>결과 지우기</Button>
             </ButtonLine>
             <Notice>아이폰·아이패드: PDF가 열리면 아래 공유(□↑) 버튼 → 'GoodNotes'를 고르면 바로 굿노트로 들어갑니다.</Notice>

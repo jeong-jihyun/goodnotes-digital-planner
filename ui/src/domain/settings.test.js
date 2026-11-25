@@ -109,3 +109,42 @@ test('예전에 저장된 설정(꾸미기 칸 없음)도 기본값으로 채워
   const s = sanitize({ year: 2028, theme: 'sage' })
   assert.equal(s.year, 2028); assert.equal(s.fontFamily, 'gothic'); assert.equal(s.owner, ''); assert.equal(s.customColor, '#6558D3')
 })
+
+// ---------- 10단계: 상품 문구·기록 ----------
+import { checkCopy, textToTags, currentCopy, fullText } from './listing.js'
+import { addEntry, addPreset, makeEntry, MAX_HISTORY } from './history.js'
+
+test('태그 글을 쉼표·줄바꿈으로 나눈다', () => {
+  assert.deepEqual(textToTags(' a, b ,\nc,, '), ['a', 'b', 'c'])
+})
+
+test('Etsy 규칙 검사: 상품명 140자, 태그 13개·20자', () => {
+  assert.deepEqual(checkCopy('en', { title: 'ok', tags: ['a'] }), {})
+  assert.ok(checkCopy('en', { title: 'x'.repeat(141), tags: [] }).title)
+  assert.ok(checkCopy('en', { title: 'ok', tags: Array(14).fill('a') }).tags)
+  assert.ok(checkCopy('en', { title: 'ok', tags: ['2027.03 - 2028.08 planner'] }).tags)
+  assert.ok(checkCopy('ko', { title: ' ', tags: [] }).title)
+})
+
+test('수정본이 있으면 수정본을 쓴다', () => {
+  const entry = { copy: { ko: { title: 'A', description: 'D', tags: ['t'] } } }
+  assert.equal(currentCopy(entry, {}, 'ko').title, 'A')
+  const c = currentCopy(entry, { ko: { title: 'B' } }, 'ko')
+  assert.equal(c.title, 'B'); assert.equal(c.description, 'D'); assert.equal(c.edited, true)
+  assert.equal(currentCopy({}, {}, 'en'), null)
+  assert.equal(fullText({ title: 'T', description: 'D', tags: ['a', 'b'] }), 'T\n\nD\n\na, b')
+})
+
+test('기록은 최근 것이 위, 같은 작업은 한 번만, 30개까지', () => {
+  let h = []
+  for (let i = 0; i < 35; i++) h = addEntry(h, makeEntry('id' + i, { year: 2027 }, { fileName: 'f', pageCount: 1 }, i))
+  assert.equal(h.length, MAX_HISTORY); assert.equal(h[0].id, 'id34')
+  h = addEntry(h, makeEntry('id20', { year: 2028 }, { fileName: 'f' }))
+  assert.equal(h[0].id, 'id20'); assert.equal(h.filter((e) => e.id === 'id20').length, 1)
+})
+
+test('같은 이름으로 설정을 저장하면 덮어쓴다', () => {
+  let p = addPreset([], '  판매용 ', { theme: 'dark' })
+  p = addPreset(p, '판매용', { theme: 'sage' })
+  assert.equal(p.length, 1); assert.equal(p[0].settings.theme, 'sage'); assert.equal(p[0].name, '판매용')
+})

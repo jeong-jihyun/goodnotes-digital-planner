@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import * as api from '../services/plannerApi.js'
+import { useHistory } from './useHistory.jsx'
 
 // PDF 생성 진행 상태. 다른 화면으로 갔다 와도, 새로고침해도(1시간 안) 이어서 보여 준다.
 // phase: idle → waking(서버 깨우는 중) → submitting → queued/processing/verifying → succeeded | failed
@@ -23,6 +24,14 @@ export function GenerationProvider({ children }) {
     ? { phase: 'processing', job: null, error: null, id: last.current.id, sig: last.current.sig, at: last.current.at }
     : { phase: 'idle', job: null, error: null, id: null, sig: null, at: null })
   const timer = useRef()
+  const { record } = useHistory()
+
+  // 성공하면 기록에 남긴다 (같은 작업은 한 번만 — 다시 확인해도 겹치지 않음)
+  useEffect(() => {
+    if (state.phase === 'succeeded' && state.job?.result && state.id && state.sig) {
+      try { record(state.id, JSON.parse(state.sig), state.job.result) } catch { /* 무시 */ }
+    }
+  }, [state.phase, state.job, state.id, state.sig, record])
 
   const poll = useCallback(async (id) => {
     try {

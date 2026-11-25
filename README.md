@@ -1,44 +1,63 @@
-# PRJ-0001 굿노트 디지털 플래너 생성기
+# PRJ-0001 굿노트 디지털 플래너 생성기 (플래너 스튜디오)
 
-연도·시작 요일·언어·색상을 고르면 **하이퍼링크가 걸린 플래너 PDF**를 자동으로 만들어 주는 프로그램입니다.
-오른쪽 탭(연간, 1~12월, 노트), 연간 달력의 월·날짜, 월간 달력의 날짜가 눌러서 이동됩니다.
+설정을 고르면 **하이퍼링크가 걸린 플래너 PDF**를 만들어 주고, 판매용 상품 문구·대표 이미지 초안까지 준비해 주는 도구입니다.
 
-## 맡는 범위
-- 자동화: PDF 생성, 링크 연결, 링크 검증, 미리보기 이미지, 상품 문구 초안
-- 사람이 하는 일: 굿노트에서 최종 확인, Etsy·아이디어스·스마트스토어 등록, 가격·응대
+- 화면(웹): https://goodnotes-digital-planner.vercel.app (Vercel, 무료)
+- PDF 서버: https://goodnotes-planner-api.onrender.com (Render 무료, 오래 안 쓰면 잠들어 첫 요청이 1분쯤 걸림)
 
-## 빠른 시작
+## 할 수 있는 것
+| 구분 | 내용 |
+|---|---|
+| 기간 | 시작 연도·시작 달, 1~18개월 |
+| 모양 | 주 시작(월/일), 언어(한국어·영어·한영 병기), 용지 3종(태블릿 가로, 굿노트 세로, A4) |
+| 꾸미기 | 테마 8종(네이비·세이지·로즈·모노·파스텔·다크·빈티지·테라코타) + 메인색 직접 고르기, 나눔 글꼴 5종, 표지 제목·이름·한 줄 다짐 |
+| 구성 | 주간·일간 켜고 끄기, 한국 공휴일, 추가 페이지(목표·습관·독서·가계부), 일간 속지 3종, 노트 1~50쪽·속지 4종 |
+| 링크 | 전체 연결 또는 월간 이동만. 만든 뒤 링크를 모두 검사하고 깨진 링크가 있으면 내려받기를 막음 |
+| 상품 준비 | 한국어·영어 상품명·설명·태그(수정·복사), 대표 이미지 JPG, 등록 체크리스트 |
+| 기록 | 만든 PDF 기록 30개, 자주 쓰는 설정 20개, 모두 지우기, 서버 상태 (모두 이 기기 브라우저에만 저장) |
+
+판매처(Etsy 등) 등록은 자동으로 하지 않습니다. 문구·이미지 초안까지만 만듭니다.
+
+## 빠른 시작 (PC 명령어)
 ```bash
 pip install -r requirements.txt
 python -m engine.cli --year 2027 --lang ko --theme navy --out output
+python -m engine.cli --year 2028 --week-start sunday --lang en --out output       # 일요일 시작 영문
+python -m engine.cli --year 2027 --theme custom --custom-color "#E07A5F" --font-family pen \
+  --title "나의 2027" --owner "홍길동" --motto "매일 조금씩" --out output
 python -m pytest -q   # 테스트
 ```
-추가 옵션(3단계): `--paper tablet-landscape|goodnotes-portrait|a4-portrait` (용지), `--links full|monthly` (링크 범위), `--lang ko-en` (한국어+영어 나란히)
-결과: `output/planner_2027_ko_navy.pdf` (가로형이 아니면 파일 이름 끝에 `_용지` 가 붙음), `output/previews/*.png`, `output/listing_copy.json`
+기타 옵션: `--paper`, `--links full|monthly`, `--start-month`, `--months`, `--holidays`, `--extras goals,habits,reading,budget`, `--daily-layout`, `--note-style`
+결과: `output/planner_*.pdf`, `output/previews/*.png`, `output/listing_copy.json` (한국어·영어 문구 포함)
 
-## 화면(React) + PC 프로그램(Electron)
-```bash
-cd ui && npm install && npm run build
-cd ../desktop && npm install && npm start
-```
-Electron은 Python 3가 설치된 PC에서 엔진을 호출합니다.
-
-## 폴더
+## 구조
 | 폴더 | 내용 |
 |---|---|
-| engine/ | Python 엔진 (설정 검증, 달력 계산, PDF 생성, 링크 검증, 문구) |
-| ui/ | React 설정 화면 |
-| desktop/ | Electron 포장 |
-| claude/ | Claude 프로젝트 지침과 스킬 파일 |
-| docs/ | 분석·설계 문서 링크 |
+| engine/ | Python 엔진 (설정 검증, 달력·공휴일, PDF 그리기, 링크 검증, 상품 문구) |
+| server/ | FastAPI 서버 (생성 작업, 미리보기, 입력 검사) + Dockerfile |
+| ui/ | React 화면 6개 (홈·만들기·미리보기·PDF·상품·설정) |
+| desktop/ | Electron 포장 (PC에서 엔진 직접 실행) |
+| scripts/ | Render 배포 스크립트 (GitHub Actions 에서 실행) |
+| tests/ | 엔진·서버 테스트 |
+| docs/ | 설계 문서 |
 
-## 폰트·저작권
-NanumGothic(OFL)을 PDF에 내장합니다. 상업 판매 가능하지만 폰트 파일 단독 판매는 금지입니다. (`engine/fonts/LICENSE-NanumGothic.txt`)
-다른 폰트를 쓰려면 `--font 경로.ttf` 를 지정하세요.
-※ 이 저장소에는 폰트 파일(NanumGothic.ttf, 4.6MB)이 없습니다. `engine/fonts/FONT_README.md` 를 보고 넣어 주세요. 폰트가 없으면 한글이 PDF에 나오지 않습니다.
+배포: `main` 에 올리면 GitHub Actions 가 테스트 → Render 서버 배포, Vercel 이 화면을 자동 배포합니다.
 
-## 테스트 현황
-- 2026-11-25: 엔진 29개 테스트 통과 (용지 3종 크기·링크, 링크 범위, 한영 병기, CLI 추가)
-- 엔진 15개 테스트 통과 (윤년, 2026~2030 모든 월 달력, 주 시작 요일, 링크 출발·도착 쌍 전체 비교, 깨진 링크 탐지). 2026-10-20 이 저장소에서 다시 실행해 확인했습니다. 단, 폰트 파일이 없는 상태라 한글 글자 표시는 확인하지 못했습니다.
-- React 화면 빌드는 이전에 확인했습니다. 이 저장소에서는 다시 실행하지 않았습니다.
-- 굿노트 앱 실제 링크 동작과 Electron 창 실행은 사람이 확인 필요
+## 글꼴·저작권
+나눔 글꼴(SIL OFL)만 씁니다. PDF에 넣어 상업 판매할 수 있지만 글꼴 파일만 따로 파는 것은 안 됩니다.
+서버·CI는 `fonts-nanum`, `fonts-nanum-extra`(손글씨 펜) 패키지로 설치합니다. PC에서 쓰려면 `--font 나눔고딕.ttf 경로` 를 주세요(같은 폴더의 다른 나눔 글꼴도 찾아 씀).
+
+## 개발 단계 (2026-11-25 완료)
+| 단계 | 내용 |
+|---|---|
+| 1~2 | 화면 틀, 공통 부품(디자인 시스템) |
+| 3~5 | 엔진 옵션, 만들기 화면, 서버 + PDF 내려받기 |
+| 6~8 | 기간·공휴일, 디자인 미리보기, 추가 페이지·속지 |
+| 9 | 꾸미기 (테마·내 색·글꼴·표지 글) |
+| 10 | 상품 등록 관리, 기록·자주 쓰는 설정, 서버 상태, 문서 정리 |
+
+## 테스트 현황 (2026-11-25)
+- 엔진·서버 131개 통과 (한글 글꼴 설치 상태, GitHub Actions 에서도 실행)
+- 화면 로직 23개 통과 (`cd ui && npm test`)
+- 브라우저 자동 점검: 만들기 → 미리보기 → PDF 생성 → 상품 문구·이미지 → 기록·설정 저장·모두 지우기
+- 사람이 확인할 것: 굿노트 앱에서 실제 링크 동작, 아이폰에서 이미지 내려받기, Electron 창 실행
