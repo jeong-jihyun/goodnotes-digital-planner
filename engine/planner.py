@@ -60,6 +60,7 @@ class Planner:
         self.dests = set()
         self.dest_page = {}
         self.pages = 0
+        self.extras = set(cfg.extras)
         self.weeks = weeks_between(self.start, self.end, cfg.week_start) if cfg.include_weekly else []
         self.week_starts = set(self.weeks)   # 월간→주간 링크는 실제로 있는 페이지로만
 
@@ -155,6 +156,34 @@ class Planner:
         self._arrow(right - 7, H-29.5, 8, WHITE)
         self._link(right - box_w, H-45, box_w, 40, month_key(y, m))
 
+    def _header_chips(self, chips):
+        """머리글 오른쪽의 작은 바로가기 버튼들 [(글자, 목적지)] — 오른쪽부터 채운다."""
+        c, W, H = self.c, self.W, self.H
+        x = W - TAB_W - LEFT
+        for label, dest in reversed(chips):
+            size = 10
+            w = pdfmetrics.stringWidth(label, self.font, size) + 16
+            x -= w
+            c.setStrokeColor(WHITE); c.setLineWidth(0.8)
+            c.roundRect(x, H-37, w, 22, 6, stroke=1, fill=0)
+            c.setFillColor(WHITE); c.setFont(self.font, size)
+            c.drawCentredString(x + w/2, H-29.5, label)
+            self._link(x, H-40, w, 28, dest)
+            x -= 6
+
+    def _box(self, x, y, size):
+        c = self.c
+        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.6)
+        c.rect(x, y, size, size, stroke=1, fill=0)
+
+    def _month_chips(self, y, m):
+        chips = []
+        for kind in ("goals", "habits", "budget"):
+            if kind in self.extras:
+                chips.append((self.L["goals" if kind == "goals" else kind] if kind != "habits" else self.L["habit"],
+                              f"{kind}_{y}_{m:02d}"))
+        return chips
+
     def _tabs(self, current):
         c, W, H = self.c, self.W, self.H
         items = [(self.L["year_tab"], "year")]
@@ -201,6 +230,10 @@ class Planner:
     def yearly(self):
         c, H = self.c, self.H
         self._page_start("year", f"{self.period_label()} {self.L['year']}")
+        chips = []
+        if "goals" in self.extras: chips.append((self.L["goals"], "year_goals"))
+        if "reading" in self.extras: chips.append((self.L["reading"], "reading_1"))
+        if chips: self._header_chips(chips)
         n = len(self.months)
         if self.portrait:
             cols = 3 if n > 4 else 2 if n > 1 else 1
@@ -239,6 +272,8 @@ class Planner:
         c, H = self.c, self.H
         key = month_key(yy, m)
         self._page_start(key, f"{yy} {self.L['months'][m-1]}")
+        chips = self._month_chips(yy, m)
+        if chips: self._header_chips(chips)
         names = self._dow()
         grid = month_grid(yy, m, self.cfg.week_start)
         cw = self.content_w/7
@@ -324,31 +359,203 @@ class Planner:
             title += f" {self.hol[d]}"
         self._page_start(day_key(d), title)
         self._back_to_month(d.year, d.month)
-        half = self.content_w/2
-        rows = int((H-110)/30)
+        layout = self.cfg.daily_layout
         c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
-        for label, x in ((self.L["schedule"], LEFT), (self.L["todo"], LEFT+half)):
-            c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(label, 12, half-12))
-            c.drawString(x+6, H-78, label)
+        if layout == "lined":                      # 줄노트: 한 장 전체 줄
+            for j in range(int((H-90)/26)):
+                y = H-80-j*26
+                c.line(LEFT, y, LEFT + self.content_w, y)
+        elif layout == "timetable":                # 시간표형: 왼쪽 06~23시, 오른쪽 할 일 + 메모
+            hours = list(range(6, 24))
+            left_w = self.content_w * 0.58
+            rh = (H-100) / len(hours)
+            c.setFont(self.font, 9)
+            for i, hr in enumerate(hours):
+                y = H-75-(i+1)*rh
+                c.setFillColor(self.th["main"]); c.drawRightString(LEFT+26, y+rh-11, f"{hr:02d}")
+                c.line(LEFT+32, y, LEFT+left_w-10, y)
+            c.line(LEFT+32, H-75, LEFT+32, H-75-len(hours)*rh)
+            x2 = LEFT + left_w + 6
+            right_w = self.content_w - left_w - 6
+            c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(self.L["todo"], 12, right_w))
+            c.drawString(x2, H-78, self.L["todo"])
+            rows = int((H-100) * 0.55 / 26)
             for j in range(rows):
-                y = H-95-j*30
-                c.line(x+6, y, x+half-12, y)
+                y = H-100-j*26
+                self._box(x2, y+3, 9)
+                c.line(x2+16, y, x2+right_w, y)
+            my = H-100-rows*26 - 24
+            c.setFont(self.font, self._fit(self.L["memo"], 12, right_w)); c.drawString(x2, my, self.L["memo"])
+            c.setStrokeColor(self.th["sub"]); c.rect(x2, 30, right_w, my-38, stroke=1, fill=0)
+        else:                                      # 일정 + 할 일 (기본)
+            half = self.content_w/2
+            rows = int((H-110)/30)
+            for label, x in ((self.L["schedule"], LEFT), (self.L["todo"], LEFT+half)):
+                c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(label, 12, half-12))
+                c.drawString(x+6, H-78, label)
+                for j in range(rows):
+                    y = H-95-j*30
+                    c.line(x+6, y, x+half-12, y)
         c.showPage()
 
     def notes(self, n):
         c, W, H = self.c, self.W, self.H
         self._page_start(f"notes_{n}", f"{self.L['notes']} {n}")
-        c.setStrokeColor(self.th["sub"]); c.setLineWidth(0.3)
-        for gx in range(int(LEFT), int(W-TAB_W-LEFT), 24):
-            c.line(gx, 30, gx, H-65)
-        for gy in range(30, H-65, 24):
-            c.line(LEFT, gy, W-TAB_W-LEFT, gy)
+        x0, x1, y0, y1 = LEFT, W-TAB_W-LEFT, 30, H-65
+        style = self.cfg.note_style
+        c.setStrokeColor(self.th["sub"]); c.setFillColor(self.th["sub"]); c.setLineWidth(0.3)
+        if style == "grid":
+            for gx in range(int(x0), int(x1), 24):
+                c.line(gx, y0, gx, y1)
+            for gy in range(y0, int(y1), 24):
+                c.line(x0, gy, x1, gy)
+        elif style == "lined":
+            c.setLineWidth(0.5)
+            for gy in range(y0, int(y1), 26):
+                c.line(x0, gy, x1, gy)
+        elif style == "dot":
+            c.setFillColor(self.th["main"])         # 연한 보조색은 점이 안 보여서 본색으로
+            for gx in range(int(x0), int(x1)+1, 18):
+                for gy in range(y0, int(y1)+1, 18):
+                    c.circle(gx, gy, 0.8, stroke=0, fill=1)
+        # blank: 아무것도 그리지 않음
+        c.showPage()
+
+    # ---- 추가 페이지 (8단계) ----
+    def year_goals(self):
+        c, H = self.c, self.H
+        self._page_start("year_goals", f"{self.period_label()} {self.L['year_goals']}")
+        rows = 8
+        rh = (H-110)/rows
+        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        for i in range(rows):
+            y = H-75-(i+1)*rh
+            c.setFillColor(self.th["sub"]); c.circle(LEFT+11, y+rh/2+2, 10, stroke=0, fill=1)
+            c.setFillColor(self.th["main"]); c.setFont(self.font, 10); c.drawCentredString(LEFT+11, y+rh/2-1.5, str(i+1))
+            c.line(LEFT+30, y+rh/2-6, LEFT+self.content_w-60, y+rh/2-6)
+            c.line(LEFT+30, y+6, LEFT+self.content_w-60, y+6)
+            self._box(LEFT+self.content_w-40, y+rh/2-6, 14)
+        c.setFont(self.font, 9); c.setFillColor(self.th["text"])
+        c.drawCentredString(LEFT+self.content_w-33, H-70, self.L["progress"])
+        c.showPage()
+
+    def reading(self, n):
+        c, H = self.c, self.H
+        self._page_start(f"reading_{n}", f"{self.L['reading']} {n}")
+        cols = [("#", .06), (self.L["title"], .40), (self.L["author"], .22), (self.L["read_date"], .14), (self.L["rating"], .18)]
+        self._table(cols, H-70, 26, 30, start_no=n-1)   # 2쪽은 1쪽 다음 번호부터
+        c.showPage()
+
+    def _table(self, cols, top, head_h, row_h, start_no=None, bottom=30, numbered=True):
+        """머리줄 + 빈 줄 표. cols=[(이름, 폭비율)]. 줄 수는 남은 높이에 맞춘다. 돌려주는 값: 줄 수"""
+        c = self.c
+        x0 = LEFT
+        xs = [x0]
+        for _, r in cols:
+            xs.append(xs[-1] + self.content_w * r)
+        c.setFillColor(self.th["sub"]); c.rect(x0, top-head_h, self.content_w, head_h, stroke=0, fill=1)
+        c.setFillColor(self.th["text"])
+        for (name, _), xa, xb in zip(cols, xs, xs[1:]):
+            c.setFont(self.font, self._fit(name, 10, xb-xa-6)); c.drawCentredString((xa+xb)/2, top-head_h+8, name)
+        rows = int((top-head_h-bottom)/row_h)
+        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        yb = top-head_h-rows*row_h
+        for j in range(rows+1):
+            c.line(x0, top-head_h-j*row_h, xs[-1], top-head_h-j*row_h)
+        for xv in xs:
+            c.line(xv, top, xv, yb)
+        if numbered and start_no is not None:
+            c.setFont(self.font, 8); c.setFillColor(self.th["text"])
+            for j in range(rows):
+                c.drawCentredString((xs[0]+xs[1])/2, top-head_h-(j+1)*row_h+row_h/2-3, str(start_no*rows + j+1))
+        return rows
+
+    def month_goals(self, yy, m):
+        c, H = self.c, self.H
+        self._page_start(f"goals_{yy}_{m:02d}", f"{yy} {self.L['months'][m-1]} {self.L['month_goals']}")
+        self._back_to_month(yy, m)
+        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.4)
+        c.setFillColor(self.th["main"]); c.setFont(self.font, 12); c.drawString(LEFT, H-80, self.L["goals"])
+        rows = 6
+        for i in range(rows):
+            y = H-100-i*26
+            self._box(LEFT, y+3, 11)
+            c.line(LEFT+20, y, LEFT+self.content_w, y)
+        top = H-100-rows*26-24
+        labels = [self.L["good"], self.L["improve"], self.L["next"]]
+        if self.portrait:                          # 세로형: 세 칸을 위아래로
+            bh = (top-30)/3
+            for i, lb in enumerate(labels):
+                y = top-(i+1)*bh
+                c.setStrokeColor(self.th["sub"]); c.rect(LEFT, y+6, self.content_w, bh-6, stroke=1, fill=0)
+                c.setFillColor(self.th["main"]); c.setFont(self.font, 11); c.drawString(LEFT+8, y+bh-14, lb)
+        else:                                      # 가로형: 세 칸을 옆으로
+            bw = self.content_w/3
+            for i, lb in enumerate(labels):
+                x = LEFT+i*bw
+                c.setStrokeColor(self.th["sub"]); c.rect(x, 30, bw-8, top-30, stroke=1, fill=0)
+                c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(lb, 11, bw-24)); c.drawString(x+8, top-16, lb)
+        c.showPage()
+
+    def habits(self, yy, m):
+        import calendar as _cal
+        c, H = self.c, self.H
+        self._page_start(f"habits_{yy}_{m:02d}", f"{yy} {self.L['months'][m-1]} {self.L['habits']}")
+        self._back_to_month(yy, m)
+        days = _cal.monthrange(yy, m)[1]
+        name_w = self.content_w * (0.26 if self.portrait else 0.2)
+        cw = (self.content_w - name_w) / days
+        top = H-75
+        head = 30
+        rh = 26                                     # 줄 높이 고정, 줄 수는 쪽 높이에 맞춤 (세로형은 더 많이)
+        rows = int((top-head-30)/rh)
+        c.setFillColor(self.th["sub"]); c.rect(LEFT, top-head, self.content_w, head, stroke=0, fill=1)
+        c.setFillColor(self.th["text"]); c.setFont(self.font, 10)
+        c.drawString(LEFT+6, top-head+11, self.L["habit"])
+        dshort = self.L["dow_mon_short"]
+        fs = max(5.5, min(8, cw*0.55))
+        for d in range(1, days+1):
+            dt = date(yy, m, d)
+            x = LEFT+name_w+(d-1)*cw
+            c.setFillColor(self._day_color(dt, self.th["text"]))
+            c.setFont(self.font, fs); c.drawCentredString(x+cw/2, top-13, str(d))
+            c.setFont(self.font, max(5, fs-1.5)); c.drawCentredString(x+cw/2, top-25, dshort[dt.weekday()])
+        c.setStrokeColor(self.th["main"]); c.setLineWidth(0.3)
+        yb = top-head-rows*rh
+        for j in range(rows+1):
+            c.line(LEFT, top-head-j*rh, LEFT+self.content_w, top-head-j*rh)
+        c.line(LEFT, top, LEFT, yb); c.line(LEFT+name_w, top, LEFT+name_w, yb)
+        for d in range(days+1):
+            x = LEFT+name_w+d*cw
+            c.line(x, top-head, x, yb)
+        c.showPage()
+
+    def budget(self, yy, m):
+        c, H = self.c, self.H
+        self._page_start(f"budget_{yy}_{m:02d}", f"{yy} {self.L['months'][m-1]} {self.L['budget']}")
+        self._back_to_month(yy, m)
+        # 위: 합계 세 칸
+        bw = self.content_w/3
+        for i, lb in enumerate([self.L["total_income"], self.L["total_expense"], self.L["balance"]]):
+            x = LEFT+i*bw
+            c.setStrokeColor(self.th["main"]); c.setLineWidth(0.5); c.rect(x, H-120, bw-8, 44, stroke=1, fill=0)
+            c.setFillColor(self.th["main"]); c.setFont(self.font, self._fit(lb, 10, bw-24)); c.drawString(x+8, H-90, lb)
+        cols = [(self.L["date"], .13), (self.L["item"], .47), (self.L["income"], .20), (self.L["expense"], .20)]
+        self._table(cols, H-132, 24, 24, start_no=None, numbered=False)
         c.showPage()
 
     def build(self):
         cfg = self.cfg
         self.cover(); self.yearly()
-        for yy, m in self.months: self.monthly(yy, m)
+        if "goals" in self.extras: self.year_goals()
+        if "reading" in self.extras:
+            for n in (1, 2): self.reading(n)
+        for yy, m in self.months:
+            self.monthly(yy, m)
+            # 그 달 바로 뒤에: 목표·돌아보기 → 습관 → 가계부 (굿노트에서 넘겨 보기 편하게)
+            if "goals" in self.extras: self.month_goals(yy, m)
+            if "habits" in self.extras: self.habits(yy, m)
+            if "budget" in self.extras: self.budget(yy, m)
         for s in self.weeks: self.weekly(s)
         if cfg.include_daily:
             for d in days_between(self.start, self.end): self.daily(d)

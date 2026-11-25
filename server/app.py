@@ -13,7 +13,7 @@
 import base64, io, json, os, sys, shutil, tempfile, threading, time, uuid
 from collections import OrderedDict
 from datetime import datetime, timezone
-from typing import Literal
+from typing import List, Literal
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -86,6 +86,9 @@ class PlannerSettings(BaseModel):
     startMonth: int = Field(default=1, ge=1, le=12)
     months: int = Field(default=12, ge=1, le=18)
     holidays: bool = False
+    extras: List[Literal["goals", "habits", "reading", "budget"]] = Field(default_factory=list, max_length=4)
+    dailyLayout: Literal["plan-todo", "timetable", "lined"] = "plan-todo"
+    noteStyle: Literal["grid", "lined", "dot", "blank"] = "grid"
 
 
 FIELD_MSG = {
@@ -94,6 +97,8 @@ FIELD_MSG = {
     "paper": "tablet-landscape, goodnotes-portrait, a4-portrait 중 하나", "linkScope": "full 또는 monthly",
     "weekly": "true 또는 false", "daily": "true 또는 false", "title": "40자 이하 글자",
     "startMonth": "1~12 사이 정수여야 합니다", "months": "1~18 사이 정수여야 합니다", "holidays": "true 또는 false",
+    "extras": "goals, habits, reading, budget 중에서", "dailyLayout": "plan-todo, timetable, lined 중 하나",
+    "noteStyle": "grid, lined, dot, blank 중 하나",
 }
 
 
@@ -117,7 +122,8 @@ def to_config(s: PlannerSettings, font):
     return PlannerConfig(year=s.year, week_start=s.weekStart, lang=s.lang, theme=s.theme,
                          include_weekly=s.weekly, include_daily=s.daily, note_pages=s.notes,
                          title=s.title, paper=s.paper, link_scope=s.linkScope, font_path=font,
-                         start_month=s.startMonth, months=s.months, holidays=s.holidays)
+                         start_month=s.startMonth, months=s.months, holidays=s.holidays,
+                         extras=tuple(s.extras), daily_layout=s.dailyLayout, note_style=s.noteStyle)
 
 
 # ---------- 작업 저장소 (메모리) ----------
@@ -144,7 +150,9 @@ def public(job):
 
 def set_job(jid, **kw):
     with LOCK:
-        JOBS[jid].update(kw, updatedAt=now_iso())
+        job = JOBS.get(jid)
+        if job is not None:        # 정리로 이미 지워진 작업이면 조용히 넘어간다
+            job.update(kw, updatedAt=now_iso())
 
 
 def run_job(jid, settings: PlannerSettings):
@@ -226,11 +234,14 @@ def options():
     return {
         "defaults": {"year": 2027, "weekStart": "monday", "lang": "ko", "theme": "navy",
                      "paper": "tablet-landscape", "linkScope": "full", "weekly": True, "daily": True, "notes": 5,
-                     "startMonth": 1, "months": 12, "holidays": True},
+                     "startMonth": 1, "months": 12, "holidays": True,
+                     "extras": [], "dailyLayout": "plan-todo", "noteStyle": "grid"},
         "constraints": {"year": {"min": 2000, "max": 2100}, "weekStart": ["monday", "sunday"],
                         "lang": ["ko", "en", "ko-en"], "theme": list(THEMES), "paper": list(PAPERS),
                         "linkScope": ["full", "monthly"], "notes": {"min": 1, "max": 50},
-                        "startMonth": {"min": 1, "max": 12}, "months": {"min": 1, "max": 18}},
+                        "startMonth": {"min": 1, "max": 12}, "months": {"min": 1, "max": 18},
+                        "extras": ["goals", "habits", "reading", "budget"],
+                        "dailyLayout": ["plan-todo", "timetable", "lined"], "noteStyle": ["grid", "lined", "dot", "blank"]},
     }
 
 
@@ -287,7 +298,11 @@ def _preview_pages(info, settings: PlannerSettings):
     dp = info["dest_page"]
     (y, m) = period_months(settings.year, settings.startMonth, settings.months)[0]
     start, end = period_range(settings.year, settings.startMonth, settings.months)
-    want = [("cover", "표지", "cover"), ("year", "연간", "year"), ("month", "월간", month_key(y, m))]
+    mk = f"{y}_{m:02d}"
+    want = [("cover", "표지", "cover"), ("year", "연간", "year"),
+            ("year_goals", "연간 목표", "year_goals"), ("reading", "독서 기록", "reading_1"),
+            ("month", "월간", month_key(y, m)),
+            ("month_goals", "월 목표", f"goals_{mk}"), ("habits", "습관", f"habits_{mk}"), ("budget", "가계부", f"budget_{mk}")]
     if settings.weekly:
         want.append(("week", "주간", week_key(weeks_between(start, end, settings.weekStart)[0])))
     if settings.daily:

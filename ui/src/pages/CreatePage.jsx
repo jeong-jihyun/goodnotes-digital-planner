@@ -3,6 +3,7 @@ import { href } from '../hooks/useHashRoute.js'
 import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
 import { OPTIONS, LIMITS, labelOf, periodLabel, periodRange, daysBetween } from '../domain/settings.js'
 import { SelectField } from '../components/Field.jsx'
+import MultiChoice from '../components/MultiChoice.jsx'
 import { THEMES } from '../domain/themes.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Card, { Grid } from '../components/Card.jsx'
@@ -22,6 +23,11 @@ const PAPER_HINT = {
   'tablet-landscape': '아이패드를 가로로 놓고 쓰는 모양 (기존 상품과 같은 규격)',
   'goodnotes-portrait': '아이패드를 세로로 들고 쓰는 모양',
   'a4-portrait': 'A4 종이로 인쇄하기 좋은 세로 모양',
+}
+const DAILY_HINT = {
+  'plan-todo': '왼쪽 일정, 오른쪽 할 일 줄',
+  timetable: '왼쪽 06~23시 시간표, 오른쪽 할 일 체크 + 메모',
+  lined: '한 쪽 전체 줄노트',
 }
 const LINK_HINT = {
   full: '월간 → 주간 → 일간을 눌러서 이동하고, 다시 월간으로 돌아올 수 있어요',
@@ -46,6 +52,7 @@ export default function CreatePage() {
       <PageHeader title="플래너 만들기" sub="새 작업의 조건을 입력합니다. 바꾼 값은 이 기기에 바로 저장되고, '설정 요약'에 즉시 반영됩니다." />
       <Grid>
         <Card size="wide" title="작업 기본 정보">
+          <h4 className="form-sec">📅 기간</h4>
           <div className="formgrid">
             <NumberField label="시작 연도" unit="년" min={LIMITS.year.min} max={LIMITS.year.max}
               value={s.year} onChange={(v) => set('year', v)} hint="2000~2100" error={errors.year} />
@@ -57,12 +64,14 @@ export default function CreatePage() {
           {!errors.year && !errors.months && !errors.startMonth && (
             <p className="field-hint choice-hint">📅 {periodLabel(s)} ({s.months}개월)</p>
           )}
+          <h4 className="form-sec">🎨 모양</h4>
           <ChoiceGroup label="한 주 시작" value={s.weekStart} onChange={(v) => set('weekStart', v)} options={OPTIONS.weekStart} />
           <ChoiceGroup label="언어" value={s.lang} onChange={(v) => set('lang', v)} options={OPTIONS.lang} />
           <ChoiceGroup label="용지 모양" value={s.paper} onChange={(v) => set('paper', v)} options={OPTIONS.paper} />
           <p className="field-hint choice-hint">{PAPER_HINT[s.paper]}</p>
           <ThemePicker value={s.theme} onChange={(v) => set('theme', v)} />
 
+          <h4 className="form-sec">📄 구성</h4>
           <div className="field">
             <span className="label">플래너 구성</span>
             <ToggleOption label="주간 페이지" desc="한 주를 한 쪽에" checked={s.weekly} onChange={(v) => set('weekly', v)} />
@@ -71,9 +80,21 @@ export default function CreatePage() {
               desc={s.lang === 'en' ? '빨간 날짜 + 영어 이름, 토요일 파랑·일요일 빨강' : '빨간 날짜 + 이름(대체공휴일 포함), 토요일 파랑·일요일 빨강'}
               checked={s.holidays} onChange={(v) => set('holidays', v)} />
           </div>
-          <NumberField label="노트 페이지 수" unit="쪽" min={LIMITS.notes.min} max={LIMITS.notes.max}
-            value={s.notes} onChange={(v) => set('notes', v)} hint="1~50쪽 · 모눈 노트" error={errors.notes} />
+          {s.daily && (
+            <>
+              <ChoiceGroup label="일간 속지" value={s.dailyLayout} onChange={(v) => set('dailyLayout', v)} options={OPTIONS.dailyLayout} />
+              <p className="field-hint choice-hint">{DAILY_HINT[s.dailyLayout]}</p>
+            </>
+          )}
 
+          <MultiChoice label="추가 페이지" value={s.extras} onChange={(v) => set('extras', v)} options={OPTIONS.extras}
+            hint="달마다 붙는 페이지는 그 달 월간 페이지 바로 뒤에 들어가고, 월간 페이지 위쪽 버튼으로 바로 갈 수 있어요" />
+
+          <NumberField label="노트 페이지 수" unit="쪽" min={LIMITS.notes.min} max={LIMITS.notes.max}
+            value={s.notes} onChange={(v) => set('notes', v)} hint="1~50쪽" error={errors.notes} />
+          <ChoiceGroup label="노트 속지" value={s.noteStyle} onChange={(v) => set('noteStyle', v)} options={OPTIONS.noteStyle} />
+
+          <h4 className="form-sec">🔗 링크</h4>
           <ChoiceGroup label="하이퍼링크" value={s.linkScope} onChange={(v) => set('linkScope', v)} options={OPTIONS.linkScope} />
           <p className="field-hint choice-hint">{LINK_HINT[s.linkScope]}</p>
           {linkNoEffect && <Notice>주간·일간 페이지를 모두 껐기 때문에 '전체 연결'과 '월간 이동만'의 결과가 같습니다.</Notice>}
@@ -97,6 +118,8 @@ export default function CreatePage() {
           <Row end={<b>{[s.weekly && '주간', s.daily && '일간'].filter(Boolean).join(' · ') || '연간·월간만'}</b>}>구성</Row>
           <Row end={<b>{labelOf('linkScope', s.linkScope)}</b>}>하이퍼링크</Row>
           <Row end={<b>{s.holidays ? '표시' : '안 함'}</b>}>공휴일</Row>
+          <Row end={<b>{s.extras.length ? OPTIONS.extras.filter((o) => s.extras.includes(o.value)).map((o) => o.label).join(' · ') : '없음'}</b>}>추가 페이지</Row>
+          <Row end={<b>{[s.daily && labelOf('dailyLayout', s.dailyLayout), labelOf('noteStyle', s.noteStyle) + ' 노트'].filter(Boolean).join(' · ')}</b>}>속지</Row>
           <Row end={errors.notes ? <StatusTag tone="error">확인 필요</StatusTag> : <b>{s.notes}쪽</b>}>노트</Row>
           <Row end={pages ? <b>약 {pages.toLocaleString()}쪽</b> : <StatusTag tone="error">입력 확인</StatusTag>}>예상 페이지 수</Row>
           <p className="tiny">예상 쪽수는 생성 후 실제 결과로 확정됩니다.{savedAt && valid ? ' · 이 기기에 저장됨' : ''}</p>

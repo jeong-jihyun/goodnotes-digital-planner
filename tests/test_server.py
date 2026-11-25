@@ -55,6 +55,7 @@ def test_health_and_options(api):
     ({"outputPath": "/etc"}, "outputPath"),            # 모르는 칸은 거부 (경로 주입 방지)
     ({"startMonth": 0}, "startMonth"), ({"startMonth": 13}, "startMonth"),
     ({"months": 0}, "months"), ({"months": 19}, "months"), ({"holidays": "yes"}, "holidays"),
+    ({"extras": ["diary"]}, "extras"), ({"dailyLayout": "hourly"}, "dailyLayout"), ({"noteStyle": "music"}, "noteStyle"),
 ])
 def test_validation_rejects(api, bad, field):
     _, c = api
@@ -189,3 +190,17 @@ def test_preview_validation_and_rate_limit():
     assert c.post("/api/v1/previews", json={**GOOD, "notes": 0}).status_code == 422
     codes = [c.post("/api/v1/previews", json={**GOOD, "notes": n}).status_code for n in (1, 2, 3)]
     assert codes == [200, 200, 429]
+
+
+def test_preview_includes_selected_extras(api):
+    _, c = api
+    body = c.post("/api/v1/previews", json={**GOOD, "extras": ["habits", "reading", "budget", "goals"],
+                                             "dailyLayout": "timetable", "noteStyle": "dot", "daily": True}).json()
+    assert [p["kind"] for p in body["pages"]] == ["cover", "year", "year_goals", "reading", "month",
+                                                  "month_goals", "habits", "budget", "day", "notes"]
+
+
+def test_generate_with_extras(api):
+    _, c = api
+    done = wait(c, c.post("/api/v1/generations", json={**GOOD, "extras": ["budget"], "months": 2}).json()["generationId"])
+    assert done["status"] == "succeeded" and done["result"]["pageCount"] == 2 + 2 + 2 + 1

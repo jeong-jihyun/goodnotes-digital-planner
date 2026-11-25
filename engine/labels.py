@@ -11,6 +11,12 @@ _KO = {
     "year": "연간", "notes": "노트", "weekly": "주간", "daily": "일간",
     "cover": "디지털 플래너", "todo": "할 일", "memo": "메모", "week": "주",
     "schedule": "일정", "home": "홈",
+    "goals": "목표", "year_goals": "연간 목표", "month_goals": "목표·돌아보기", "habits": "습관 트래커",
+    "habit": "습관", "reading": "독서 기록", "budget": "가계부", "title": "제목", "author": "저자",
+    "read_date": "읽은 날", "rating": "별점", "date": "날짜", "item": "내용", "income": "수입",
+    "expense": "지출", "balance": "남은 돈", "total_income": "수입 합계", "total_expense": "지출 합계",
+    "good": "잘한 점", "improve": "아쉬운 점", "next": "다음 달에는", "progress": "진행",
+    "notes_short": "메모",
 }
 _EN_MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July",
                    "August", "September", "October", "November", "December"]
@@ -21,6 +27,12 @@ _EN = {
     "year": "Year", "notes": "Notes", "weekly": "Weekly", "daily": "Daily",
     "cover": "Digital Planner", "todo": "To do", "memo": "Memo", "week": "Week",
     "schedule": "Schedule", "home": "Home",
+    "goals": "Goals", "year_goals": "Yearly goals", "month_goals": "Goals & review", "habits": "Habit tracker",
+    "habit": "Habit", "reading": "Reading log", "budget": "Budget", "title": "Title", "author": "Author",
+    "read_date": "Date", "rating": "Rating", "date": "Date", "item": "Item", "income": "Income",
+    "expense": "Expense", "balance": "Balance", "total_income": "Total income", "total_expense": "Total expense",
+    "good": "Went well", "improve": "To improve", "next": "Next month", "progress": "Done",
+    "notes_short": "Notes",
 }
 
 

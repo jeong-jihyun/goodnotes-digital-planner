@@ -55,3 +55,20 @@ test('기간 쪽수: 엔진 테스트와 같은 값', () => {
   const p = estimatePages({ ...DEFAULTS, startMonth: 11, months: 3, notes: 1 })
   assert.equal(p, 2 + 3 + 14 + 92 + 1)
 })
+
+test('추가 페이지·속지 검사', () => {
+  assert.deepEqual(validate({ ...DEFAULTS, extras: ['goals', 'budget'], dailyLayout: 'timetable', noteStyle: 'dot' }), {})
+  assert.ok(validate({ ...DEFAULTS, extras: ['diary'] }).extras)
+  assert.ok(validate({ ...DEFAULTS, extras: 'goals' }).extras)
+  assert.ok(validate({ ...DEFAULTS, dailyLayout: 'hourly' }).dailyLayout)
+  assert.ok(validate({ ...DEFAULTS, noteStyle: 'music' }).noteStyle)
+})
+
+test('추가 페이지 쪽수: 엔진 테스트와 같은 식', () => {
+  // tests/test_extras.py: 연간 목표 1 + 독서 2 + (월 목표·습관·가계부) × 12
+  const base = estimatePages({ ...DEFAULTS, weekly: false, daily: false, notes: 1 })
+  const all = estimatePages({ ...DEFAULTS, weekly: false, daily: false, notes: 1, extras: ['goals', 'habits', 'reading', 'budget'] })
+  assert.equal(all - base, 1 + 2 + 3 * 12)
+  // 서버 테스트: 2개월 + 가계부, 주간·일간 없음, 노트 1 → 2 + 2 + 2 + 1
+  assert.equal(estimatePages({ ...DEFAULTS, months: 2, weekly: false, daily: false, notes: 1, extras: ['budget'] }), 7)
+})

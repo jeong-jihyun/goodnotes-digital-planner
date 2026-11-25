@@ -5,6 +5,7 @@ export const DEFAULTS = Object.freeze({
   year: 2027, weekStart: 'monday', lang: 'ko', theme: 'navy',
   paper: 'tablet-landscape', linkScope: 'full', weekly: true, daily: true, notes: 5,
   startMonth: 1, months: 12, holidays: true,
+  extras: [], dailyLayout: 'plan-todo', noteStyle: 'grid',
 })
 
 export const LIMITS = Object.freeze({
@@ -22,6 +23,18 @@ export const OPTIONS = Object.freeze({
   linkScope: [{ value: 'full', label: '전체 연결' }, { value: 'monthly', label: '월간 이동만' }],
   theme: [{ value: 'navy' }, { value: 'sage' }, { value: 'rose' }, { value: 'mono' }],
   startMonth: Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}월` })),
+  extras: [
+    { value: 'goals', label: '목표', desc: '연간 목표 1쪽 + 달마다 목표·돌아보기' },
+    { value: 'habits', label: '습관 트래커', desc: '달마다 1쪽, 1~31일 체크 칸' },
+    { value: 'reading', label: '독서 기록', desc: '제목·저자·별점 목록 2쪽' },
+    { value: 'budget', label: '가계부', desc: '달마다 1쪽, 수입·지출 표' },
+  ],
+  dailyLayout: [
+    { value: 'plan-todo', label: '일정 + 할 일' }, { value: 'timetable', label: '시간표형' }, { value: 'lined', label: '줄노트' },
+  ],
+  noteStyle: [
+    { value: 'grid', label: '모눈' }, { value: 'lined', label: '줄' }, { value: 'dot', label: '점' }, { value: 'blank', label: '빈 종이' },
+  ],
 })
 
 export const labelOf = (field, value) => (OPTIONS[field] || []).find((o) => o.value === value)?.label ?? String(value)
@@ -35,7 +48,8 @@ export function validate(s) {
   if (!isInt(s.startMonth) || s.startMonth < 1 || s.startMonth > 12) e.startMonth = '1~12월 중에서 골라 주세요'
   if (!isInt(s.months) || s.months < LIMITS.months.min || s.months > LIMITS.months.max) e.months = '1~18개월 사이 정수로 입력해 주세요'
   if (typeof s.holidays !== 'boolean') e.holidays = '켜기/끄기로 골라 주세요'
-  for (const f of ['weekStart', 'lang', 'paper', 'linkScope', 'theme']) {
+  if (!Array.isArray(s.extras) || s.extras.some((x) => !OPTIONS.extras.some((o) => o.value === x))) e.extras = '목록에서 골라 주세요'
+  for (const f of ['weekStart', 'lang', 'paper', 'linkScope', 'theme', 'dailyLayout', 'noteStyle']) {
     if (!OPTIONS[f].some((o) => o.value === s[f])) e[f] = '목록에서 골라 주세요'
   }
   if (typeof s.weekly !== 'boolean') e.weekly = '켜기/끄기로 골라 주세요'
@@ -81,7 +95,10 @@ export function periodLabel(s) {
 export function estimatePages(s) {
   if (Object.keys(validate(s)).length) return null
   const { start, end } = periodRange(s.year, s.startMonth, s.months)
-  return 2 + s.months + (s.weekly ? weeksBetween(start, end, s.weekStart) : 0) + (s.daily ? daysBetween(start, end) : 0) + s.notes
+  const ex = new Set(s.extras)
+  const extraPages = (ex.has('goals') ? 1 + s.months : 0) + (ex.has('reading') ? 2 : 0) +
+    (ex.has('habits') ? s.months : 0) + (ex.has('budget') ? s.months : 0)
+  return 2 + s.months + extraPages + (s.weekly ? weeksBetween(start, end, s.weekStart) : 0) + (s.daily ? daysBetween(start, end) : 0) + s.notes
 }
 
 // 저장돼 있던 값이 깨져 있어도 화면이 죽지 않게: 알려진 칸만 가져오고 나머지는 기본값

@@ -5,6 +5,10 @@ PAPER_KO = {"tablet-landscape": "태블릿 가로형", "goodnotes-portrait": "�
 PAPER_EN = {"tablet-landscape": "tablet landscape", "goodnotes-portrait": "GoodNotes portrait", "a4-portrait": "A4 printable portrait"}
 
 
+EXTRA_KO = {"goals": "연간·월간 목표", "habits": "월별 습관 트래커", "reading": "독서 기록", "budget": "월별 가계부"}
+EXTRA_EN = {"goals": "yearly & monthly goals", "habits": "monthly habit tracker", "reading": "reading log", "budget": "monthly budget"}
+
+
 def _period(cfg):
     """(기본 기간 여부, '2027.03 - 2028.02' 같은 표기)"""
     from .calendar_utils import period_months
@@ -29,6 +33,7 @@ def make_copy(cfg, info):
                 f"- 용지: {PAPER_KO[cfg.paper]}"
                 f"{' · 한국어/영어 병기' if cfg.lang == 'ko-en' else ''}\n"
                 f"{'- 한국 공휴일(대체공휴일 포함) 표시, 일요일 빨강·토요일 파랑' + chr(10) if hol else ''}"
+                f"{'- 추가 페이지: ' + ', '.join(EXTRA_KO[x] for x in getattr(cfg, 'extras', ())) + chr(10) if getattr(cfg, 'extras', ()) else ''}"
                 "- 굿노트, 노타빌리티 등 PDF 주석 앱에서 사용하세요.\n"
                 "- 디지털 상품이므로 다운로드 후 교환·환불이 어렵습니다.")
         tags = ["굿노트", "디지털플래너", f"{y}플래너", "아이패드다이어리", "하이퍼링크"]
@@ -41,6 +46,7 @@ def make_copy(cfg, info):
                 f"- Week starts on {cfg.week_start.title()}\n"
                 f"- Paper: {PAPER_EN[cfg.paper]}\n"
                 f"{'- Korean public holidays marked' + chr(10) if hol else ''}"
+                f"{'- Extra pages: ' + ', '.join(EXTRA_EN[x] for x in getattr(cfg, 'extras', ())) + chr(10) if getattr(cfg, 'extras', ()) else ''}"
                 "- Works with GoodNotes, Notability and other PDF annotation apps.\n"
                 "- Digital product: no physical item will be shipped.")
         tags = ["goodnotes planner", "digital planner", f"{y} planner", "ipad planner", "hyperlinked"]

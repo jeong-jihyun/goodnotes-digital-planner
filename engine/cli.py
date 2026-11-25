@@ -23,12 +23,17 @@ def main(argv=None):
     ap.add_argument("--start-month", type=int, default=1, help="기간 시작 달 1~12")
     ap.add_argument("--months", type=int, default=12, help="기간 길이 1~18개월")
     ap.add_argument("--holidays", action="store_true", help="한국 공휴일·주말 색 표시")
+    ap.add_argument("--extras", default="", help="추가 페이지 쉼표 구분: goals,habits,reading,budget")
+    ap.add_argument("--daily-layout", default="plan-todo", help="plan-todo | timetable | lined")
+    ap.add_argument("--note-style", default="grid", help="grid | lined | dot | blank")
     ap.add_argument("--out", default="output")
     a = ap.parse_args(argv)
     cfg = PlannerConfig(year=a.year, week_start=a.week_start, lang=a.lang, theme=a.theme,
                         include_weekly=not a.no_weekly, include_daily=not a.no_daily,
                         note_pages=a.notes, font_path=a.font, paper=a.paper, link_scope=a.links,
-                        start_month=a.start_month, months=a.months, holidays=a.holidays)
+                        start_month=a.start_month, months=a.months, holidays=a.holidays,
+                        extras=tuple(x.strip() for x in a.extras.split(",") if x.strip()),
+                        daily_layout=a.daily_layout, note_style=a.note_style)
     # 기본 용지(태블릿 가로형)는 예전 파일 이름을 그대로 쓴다
     suffix = "" if a.paper == "tablet-landscape" else f"_{a.paper}"
     if (a.start_month, a.months) != (1, 12):   # 기본 기간이 아니면 시작 달·개월 수를 붙인다

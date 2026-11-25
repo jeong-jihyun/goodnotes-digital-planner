@@ -16,7 +16,10 @@ PAPERS = {
     "a4-portrait": (595, 842),         # A4 인쇄형 (A4 세로)
 }
 
-LANGS = ("ko", "en", "ko-en")          # ko-en: 한국어+영어 나란히
+LANGS = ("ko", "en", "ko-en")
+EXTRAS = ("goals", "habits", "reading", "budget")       # 추가 페이지 (8단계)
+DAILY_LAYOUTS = ("plan-todo", "timetable", "lined")    # 일간 속지
+NOTE_STYLES = ("grid", "lined", "dot", "blank")        # 노트 속지          # ko-en: 한국어+영어 나란히
 LINK_SCOPES = ("full", "monthly")      # full: 월간→주간→일간까지 / monthly: 탭·월 이동만
 
 
@@ -36,6 +39,9 @@ class PlannerConfig:
     start_month: int = 1              # 기간 시작 달 (1~12). year 는 시작 연도
     months: int = 12                  # 기간 길이 (1~18개월)
     holidays: bool = False            # 한국 공휴일·주말 색 표시
+    extras: tuple = ()                # 추가 페이지: goals, habits, reading, budget
+    daily_layout: str = "plan-todo"   # 일간 속지
+    note_style: str = "grid"          # 노트 속지
 
     def validate(self):
         if not isinstance(self.year, int) or not 2000 <= self.year <= 2100:
@@ -54,6 +60,14 @@ class PlannerConfig:
             raise ValueError("start_month는 1~12")
         if not 1 <= self.months <= 18:
             raise ValueError("months는 1~18")
+        bad = set(self.extras or ()) - set(EXTRAS)
+        if bad:
+            raise ValueError(f"extras는 {EXTRAS} 중에서 골라야 합니다 (모르는 값: {sorted(bad)})")
+        self.extras = tuple(x for x in EXTRAS if x in set(self.extras or ()))   # 순서 고정·중복 제거
+        if self.daily_layout not in DAILY_LAYOUTS:
+            raise ValueError(f"daily_layout은 {DAILY_LAYOUTS} 중 하나")
+        if self.note_style not in NOTE_STYLES:
+            raise ValueError(f"note_style은 {NOTE_STYLES} 중 하나")
         if self.link_scope not in LINK_SCOPES:
             raise ValueError("link_scope는 full 또는 monthly")
         return self
