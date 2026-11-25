@@ -4,7 +4,7 @@ html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); -webkit-text-size-adjust: 100%; }
 button, input, select, textarea { font-family: inherit; }
 
-.app { max-width: var(--container); margin: auto; min-height: 100vh; display: grid; grid-template-columns: var(--sidebar-w) 1fr; transition: grid-template-columns .2s; }
+.app { max-width: var(--container); margin: 0; min-height: 100vh; display: grid; grid-template-columns: var(--sidebar-w) 1fr; transition: grid-template-columns .2s; }
 .app.collapsed { grid-template-columns: var(--sidebar-w-collapsed) 1fr; }
 .side { background: var(--surface); border-right: 1px solid var(--line); padding: 24px 15px; position: sticky; top: 0; height: 100vh; overflow: hidden; }
 .side-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding-bottom: 28px; }
@@ -248,3 +248,11 @@ h1 { font-size: var(--fs-h1); letter-spacing: -1.5px; margin: 0 0 8px; }
 
 /* '한 줄 전체' 카드는 어느 화면 폭에서도 한 줄 전체 (태블릿 규칙 '.card { span 6 }' 에 덮이지 않게 더 구체적으로) */
 .card.full, .card.wide.t-full { grid-column: span 12; }
+
+/* 넓은 PC 화면: 메뉴는 왼쪽 끝에 붙이고 본문이 남은 폭을 모두 쓴다 */
+.app { width: 100%; }
+.brand-word { flex: none; }
+.side-toggle { flex: none; }
+@media (min-width: 1600px) {
+  .main { padding-left: 56px; padding-right: 56px; }
+}

@@ -37,8 +37,8 @@
   --fs-small: 12px;
   --fs-tiny: 11px;
 
-  --sidebar-w: 225px;
+  --sidebar-w: 248px;
   --sidebar-w-collapsed: 72px;
-  --container: 1180px;
+  --container: none;        /* 화면 폭에 맞춰 꽉 채움 (예전 1180px 고정) */
   --bp-mobile: 740px; /* 참고용: CSS 미디어쿼리는 변수를 못 써서 값 직접 사용 */
 }
