@@ -1,7 +1,7 @@
 // 실행: npm test  (Node 내장 테스트, 추가 설치 없음)
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULTS, validate, estimatePages, weekCount, dayCount, sanitize } from './settings.js'
+import { DEFAULTS, validate, estimatePages, weekCount, dayCount, sanitize, periodLabel } from './settings.js'
 
 test('기본값은 통과', () => assert.deepEqual(validate(DEFAULTS), {}))
 
@@ -37,4 +37,21 @@ test('깨진 저장값 복구', () => {
   assert.deepEqual(sanitize(null), DEFAULTS)
   const s = sanitize({ year: 2030, notes: 999, lang: 'ko-en', hacked: 1 })
   assert.equal(s.year, 2030); assert.equal(s.notes, 5); assert.equal(s.lang, 'ko-en'); assert.equal(s.hacked, undefined)
+})
+
+test('기간 검사', () => {
+  for (const [k, v] of [['startMonth', 0], ['startMonth', 13], ['months', 0], ['months', 19], ['months', 1.5], ['holidays', 'yes']])
+    assert.ok(validate({ ...DEFAULTS, [k]: v })[k], `${k}=${v}`)
+  assert.deepEqual(validate({ ...DEFAULTS, startMonth: 7, months: 18 }), {})
+})
+
+test('기간 표시', () => {
+  assert.equal(periodLabel(DEFAULTS), '2027.01 ~ 2027.12')
+  assert.equal(periodLabel({ ...DEFAULTS, startMonth: 11, months: 3 }), '2027.11 ~ 2028.01')
+})
+
+test('기간 쪽수: 엔진 테스트와 같은 값', () => {
+  // tests/test_period_holidays.py: 2027-11 부터 3개월, 노트 1 → 2 + 3 + 주 수 + 92 + 1
+  const p = estimatePages({ ...DEFAULTS, startMonth: 11, months: 3, notes: 1 })
+  assert.equal(p, 2 + 3 + 14 + 92 + 1)
 })

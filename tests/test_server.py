@@ -53,6 +53,8 @@ def test_health_and_options(api):
     ({"notes": 0}, "notes"), ({"notes": 51}, "notes"), ({"lang": "jp"}, "lang"), ({"theme": "red"}, "theme"),
     ({"paper": "letter"}, "paper"), ({"linkScope": "none"}, "linkScope"), ({"weekly": "yes"}, "weekly"),
     ({"outputPath": "/etc"}, "outputPath"),            # 모르는 칸은 거부 (경로 주입 방지)
+    ({"startMonth": 0}, "startMonth"), ({"startMonth": 13}, "startMonth"),
+    ({"months": 0}, "months"), ({"months": 19}, "months"), ({"holidays": "yes"}, "holidays"),
 ])
 def test_validation_rejects(api, bad, field):
     _, c = api
@@ -136,3 +138,14 @@ def test_cors_allows_site_only(api):
     bad = c.options("/api/v1/generations", headers={"Origin": "https://evil.example.com",
                                                     "Access-Control-Request-Method": "POST"})
     assert "access-control-allow-origin" not in bad.headers
+
+
+@pytest.mark.skipif(not HAS_FONT, reason="한글 글꼴 없음")
+def test_generate_period_with_holidays(api):
+    _, c = api
+    body = {**GOOD, "lang": "ko", "startMonth": 11, "months": 3, "holidays": True, "weekly": True}
+    done = wait(c, c.post("/api/v1/generations", json=body).json()["generationId"])
+    assert done["status"] == "succeeded", done
+    r = done["result"]
+    assert r["fileName"] == "planner_2027_ko_navy_11m3.pdf"
+    assert r["pageCount"] == r["expectedPages"] and r["brokenLinkCount"] == 0

@@ -46,14 +46,14 @@ def test_monthly_scope_has_no_day_or_week_links():
         dests = {k for _, k in info["link_list"]}
         assert not any(k.startswith(("day_", "week_")) for k in dests)
         # 오른쪽 탭(연간·12개월·노트)은 그대로
-        assert {"year", "notes_1"} | {month_key(m) for m in range(1, 13)} <= dests
+        assert {"year", "notes_1"} | {month_key(2027, m) for m in range(1, 13)} <= dests
         assert validate_pdf(out)["ok"]
 
 
 def test_full_scope_every_week_page_is_reachable_from_a_month():
     with tempfile.TemporaryDirectory() as d:
         out, info = _build(d, year=2027, week_start="sunday", include_daily=False, note_pages=1)
-        month_pages = {info["dest_page"][month_key(m)] for m in range(1, 13)}
+        month_pages = {info["dest_page"][month_key(2027, m)] for m in range(1, 13)}
         from_month = {k for p, k in info["link_list"] if p in month_pages}
         for s in weeks_of_year(2027, "sunday"):
             assert week_key(s) in from_month, s
@@ -66,15 +66,15 @@ def test_full_scope_week_and_day_pages_link_back_to_their_month():
         for p, k in info["link_list"]:
             by_page.setdefault(p, set()).add(k)
         # 2027-03-15 일간 → 3월
-        assert month_key(3) in by_page[info["dest_page"]["day_2027-03-15"]]
+        assert month_key(2027, 3) in by_page[info["dest_page"]["day_2027-03-15"]]
         weeks = weeks_of_year(2027, "monday")
         # 첫 주(2026-12-28 시작, 가운데 날 2026-12-31) → 1월, 마지막 주 → 12월
         assert weeks[0] == date(2026, 12, 28)
         first_links = by_page[info["dest_page"][week_key(weeks[0])]] - {"year", "notes_1"}
-        assert month_key(1) in first_links
+        assert month_key(2027, 1) in first_links
         last = weeks[-1]   # 2027-12-27 시작 → 12월
         assert last == date(2027, 12, 27)
-        assert month_key(12) in by_page[info["dest_page"][week_key(last)]]
+        assert month_key(2027, 12) in by_page[info["dest_page"][week_key(last)]]
 
 
 def test_weekly_off_means_no_week_links_even_in_full_scope():

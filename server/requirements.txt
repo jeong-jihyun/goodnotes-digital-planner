@@ -1,4 +1,5 @@
 reportlab>=4.0
 pypdf>=4.0
+holidays>=0.50
 fastapi>=0.110
 uvicorn[standard]>=0.29

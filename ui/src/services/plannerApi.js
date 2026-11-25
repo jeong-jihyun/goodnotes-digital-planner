@@ -30,6 +30,7 @@ async function call(path, { method = 'GET', body, timeout = 90000 } = {}) {
 export const toRequest = (s) => ({
   year: s.year, weekStart: s.weekStart, lang: s.lang, theme: s.theme, paper: s.paper,
   linkScope: s.linkScope, weekly: s.weekly, daily: s.daily, notes: s.notes,
+  startMonth: s.startMonth, months: s.months, holidays: s.holidays,
 })
 
 export const health = () => call('/health', { timeout: 90000 })

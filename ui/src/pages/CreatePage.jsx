@@ -1,7 +1,8 @@
 import React from 'react'
 import { href } from '../hooks/useHashRoute.js'
 import { usePlannerSettings } from '../hooks/usePlannerSettings.jsx'
-import { OPTIONS, LIMITS, labelOf } from '../domain/settings.js'
+import { OPTIONS, LIMITS, labelOf, periodLabel, periodRange, daysBetween } from '../domain/settings.js'
+import { SelectField } from '../components/Field.jsx'
 import { THEMES } from '../domain/themes.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Card, { Grid } from '../components/Card.jsx'
@@ -27,6 +28,12 @@ const LINK_HINT = {
   monthly: '오른쪽 탭과 월 이동만 돼요. 날짜를 눌러도 이동하지 않아요',
 }
 
+function dailyDesc(s, errors) {
+  if (errors.year || errors.months || errors.startMonth) return '하루를 한 쪽에'
+  const { start, end } = periodRange(s.year, s.startMonth, s.months)
+  return `하루를 한 쪽에 (기간 ${daysBetween(start, end)}쪽)`
+}
+
 export default function CreatePage() {
   const { settings: s, set, reset, errors, valid, pages, savedAt } = usePlannerSettings()
   const toast = useToast()
@@ -40,11 +47,16 @@ export default function CreatePage() {
       <Grid>
         <Card size="wide" title="작업 기본 정보">
           <div className="formgrid">
-            <NumberField label="플래너 연도" unit="년" min={LIMITS.year.min} max={LIMITS.year.max}
+            <NumberField label="시작 연도" unit="년" min={LIMITS.year.min} max={LIMITS.year.max}
               value={s.year} onChange={(v) => set('year', v)} hint="2000~2100" error={errors.year} />
-            <NumberField label="노트 페이지 수" unit="쪽" min={LIMITS.notes.min} max={LIMITS.notes.max}
-              value={s.notes} onChange={(v) => set('notes', v)} hint="1~50쪽" error={errors.notes} />
+            <SelectField label="시작 달" value={s.startMonth} onChange={(v) => set('startMonth', Number(v))}
+              options={OPTIONS.startMonth} hint="학기·회계연도에 맞춰 시작할 수 있어요" error={errors.startMonth} />
+            <NumberField label="기간" unit="개월" min={LIMITS.months.min} max={LIMITS.months.max}
+              value={s.months} onChange={(v) => set('months', v)} hint="1~18개월" error={errors.months} />
           </div>
+          {!errors.year && !errors.months && !errors.startMonth && (
+            <p className="field-hint choice-hint">📅 {periodLabel(s)} ({s.months}개월)</p>
+          )}
           <ChoiceGroup label="한 주 시작" value={s.weekStart} onChange={(v) => set('weekStart', v)} options={OPTIONS.weekStart} />
           <ChoiceGroup label="언어" value={s.lang} onChange={(v) => set('lang', v)} options={OPTIONS.lang} />
           <ChoiceGroup label="용지 모양" value={s.paper} onChange={(v) => set('paper', v)} options={OPTIONS.paper} />
@@ -54,8 +66,13 @@ export default function CreatePage() {
           <div className="field">
             <span className="label">플래너 구성</span>
             <ToggleOption label="주간 페이지" desc="한 주를 한 쪽에" checked={s.weekly} onChange={(v) => set('weekly', v)} />
-            <ToggleOption label="일간 페이지" desc={`하루를 한 쪽에 (1년 ${s.year % 4 === 0 && (s.year % 100 !== 0 || s.year % 400 === 0) ? 366 : 365}쪽)`} checked={s.daily} onChange={(v) => set('daily', v)} />
+            <ToggleOption label="일간 페이지" desc={dailyDesc(s, errors)} checked={s.daily} onChange={(v) => set('daily', v)} />
+            <ToggleOption label="한국 공휴일 표시"
+              desc={s.lang === 'en' ? '빨간 날짜 + 영어 이름, 토요일 파랑·일요일 빨강' : '빨간 날짜 + 이름(대체공휴일 포함), 토요일 파랑·일요일 빨강'}
+              checked={s.holidays} onChange={(v) => set('holidays', v)} />
           </div>
+          <NumberField label="노트 페이지 수" unit="쪽" min={LIMITS.notes.min} max={LIMITS.notes.max}
+            value={s.notes} onChange={(v) => set('notes', v)} hint="1~50쪽 · 모눈 노트" error={errors.notes} />
 
           <ChoiceGroup label="하이퍼링크" value={s.linkScope} onChange={(v) => set('linkScope', v)} options={OPTIONS.linkScope} />
           <p className="field-hint choice-hint">{LINK_HINT[s.linkScope]}</p>
@@ -72,13 +89,14 @@ export default function CreatePage() {
         </Card>
 
         <Card tabletFull title="설정 요약">
-          <Row end={errors.year ? <StatusTag tone="error">확인 필요</StatusTag> : <b>{s.year}년</b>}>연도</Row>
+          <Row end={errors.year || errors.months || errors.startMonth ? <StatusTag tone="error">확인 필요</StatusTag> : <b>{periodLabel(s)} · {s.months}개월</b>}>기간</Row>
           <Row end={<b>{labelOf('weekStart', s.weekStart)}</b>}>한 주 시작</Row>
           <Row end={<b>{labelOf('lang', s.lang)}</b>}>언어</Row>
           <Row end={<b>{labelOf('paper', s.paper)}</b>}>용지</Row>
           <Row end={<b>{THEMES.find((t) => t.id === s.theme)?.name}</b>}>테마</Row>
           <Row end={<b>{[s.weekly && '주간', s.daily && '일간'].filter(Boolean).join(' · ') || '연간·월간만'}</b>}>구성</Row>
           <Row end={<b>{labelOf('linkScope', s.linkScope)}</b>}>하이퍼링크</Row>
+          <Row end={<b>{s.holidays ? '표시' : '안 함'}</b>}>공휴일</Row>
           <Row end={errors.notes ? <StatusTag tone="error">확인 필요</StatusTag> : <b>{s.notes}쪽</b>}>노트</Row>
           <Row end={pages ? <b>약 {pages.toLocaleString()}쪽</b> : <StatusTag tone="error">입력 확인</StatusTag>}>예상 페이지 수</Row>
           <p className="tiny">예상 쪽수는 생성 후 실제 결과로 확정됩니다.{savedAt && valid ? ' · 이 기기에 저장됨' : ''}</p>

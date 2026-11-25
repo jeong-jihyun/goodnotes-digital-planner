@@ -74,7 +74,7 @@ def test_links_go_to_the_right_pages():
         actual = sorted((s, t) for s, t in link_targets(out))
         assert expected == actual
         # 연간 페이지(2쪽)의 3월 제목 링크는 3월 월간 페이지로 간다
-        assert (2, info["dest_page"]["month_03"]) in actual
+        assert (2, info["dest_page"]["month_2027_03"]) in actual
 
 
 def test_validator_detects_broken_link():

@@ -1,3 +1,4 @@
 reportlab>=4.0
 pypdf>=4.0
 pytest>=8.0
+holidays>=0.50

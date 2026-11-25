@@ -80,6 +80,9 @@ class PlannerSettings(BaseModel):
     daily: bool
     notes: int = Field(ge=1, le=50)
     title: str = Field(default="", max_length=40)
+    startMonth: int = Field(default=1, ge=1, le=12)
+    months: int = Field(default=12, ge=1, le=18)
+    holidays: bool = False
 
 
 FIELD_MSG = {
@@ -87,6 +90,7 @@ FIELD_MSG = {
     "weekStart": "monday 또는 sunday", "lang": "ko, en, ko-en 중 하나", "theme": "navy, sage, rose, mono 중 하나",
     "paper": "tablet-landscape, goodnotes-portrait, a4-portrait 중 하나", "linkScope": "full 또는 monthly",
     "weekly": "true 또는 false", "daily": "true 또는 false", "title": "40자 이하 글자",
+    "startMonth": "1~12 사이 정수여야 합니다", "months": "1~18 사이 정수여야 합니다", "holidays": "true 또는 false",
 }
 
 
@@ -109,7 +113,8 @@ async def on_invalid(request: Request, exc: RequestValidationError):
 def to_config(s: PlannerSettings, font):
     return PlannerConfig(year=s.year, week_start=s.weekStart, lang=s.lang, theme=s.theme,
                          include_weekly=s.weekly, include_daily=s.daily, note_pages=s.notes,
-                         title=s.title, paper=s.paper, link_scope=s.linkScope, font_path=font)
+                         title=s.title, paper=s.paper, link_scope=s.linkScope, font_path=font,
+                         start_month=s.startMonth, months=s.months, holidays=s.holidays)
 
 
 # ---------- 작업 저장소 (메모리) ----------
@@ -147,6 +152,8 @@ def run_job(jid, settings: PlannerSettings):
                         error={"code": "GENERATION_FAILED", "message": "서버에 한글 글꼴이 없어 만들 수 없습니다."})
                 return
             name = f"planner_{settings.year}_{settings.lang}_{settings.theme}"
+            if (settings.startMonth, settings.months) != (1, 12):
+                name += f"_{settings.startMonth:02d}m{settings.months}"
             if settings.paper != "tablet-landscape":
                 name += f"_{settings.paper}"
             pdf = os.path.join(job_dir, name + ".pdf")
@@ -210,10 +217,12 @@ def health():
 def options():
     return {
         "defaults": {"year": 2027, "weekStart": "monday", "lang": "ko", "theme": "navy",
-                     "paper": "tablet-landscape", "linkScope": "full", "weekly": True, "daily": True, "notes": 5},
+                     "paper": "tablet-landscape", "linkScope": "full", "weekly": True, "daily": True, "notes": 5,
+                     "startMonth": 1, "months": 12, "holidays": True},
         "constraints": {"year": {"min": 2000, "max": 2100}, "weekStart": ["monday", "sunday"],
                         "lang": ["ko", "en", "ko-en"], "theme": list(THEMES), "paper": list(PAPERS),
-                        "linkScope": ["full", "monthly"], "notes": {"min": 1, "max": 50}},
+                        "linkScope": ["full", "monthly"], "notes": {"min": 1, "max": 50},
+                        "startMonth": {"min": 1, "max": 12}, "months": {"min": 1, "max": 18}},
     }
 
 

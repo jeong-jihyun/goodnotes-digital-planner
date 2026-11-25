@@ -33,6 +33,9 @@ class PlannerConfig:
     font_path: str = ""          # 선택: 한글 TTF 경로 (없으면 내장 CID 폰트)
     paper: str = "tablet-landscape"   # PAPERS 중 하나
     link_scope: str = "full"          # full | monthly
+    start_month: int = 1              # 기간 시작 달 (1~12). year 는 시작 연도
+    months: int = 12                  # 기간 길이 (1~18개월)
+    holidays: bool = False            # 한국 공휴일·주말 색 표시
 
     def validate(self):
         if not isinstance(self.year, int) or not 2000 <= self.year <= 2100:
@@ -47,6 +50,10 @@ class PlannerConfig:
             raise ValueError("note_pages는 0~50")
         if self.paper not in PAPERS:
             raise ValueError(f"paper는 {list(PAPERS)} 중 하나")
+        if not 1 <= self.start_month <= 12:
+            raise ValueError("start_month는 1~12")
+        if not 1 <= self.months <= 18:
+            raise ValueError("months는 1~18")
         if self.link_scope not in LINK_SCOPES:
             raise ValueError("link_scope는 full 또는 monthly")
         return self
