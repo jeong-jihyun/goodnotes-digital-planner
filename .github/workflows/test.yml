@@ -1,11 +1,12 @@
-# 테스트만 돌린다. 서버 배포는 Render 가 main 을 보고 자동으로 한다(render.yaml).
+# 테스트 → 통과하면 Render 서버 배포(scripts/render_deploy.py)
+# Render 자동 배포가 반영되지 않는 일이 있어, GitHub 이 직접 배포를 시키고 결과·오류를 알림으로 남긴다.
 # (Hugging Face 는 Docker 서버가 유료(PRO)로 바뀌어 사용하지 않음)
-name: 엔진·서버 테스트
+name: 엔진·서버 테스트 + Render 배포
 
 on:
   push:
     branches: [main]
-    paths: ["engine/**", "server/**", "tests/**", ".github/workflows/**"]
+    paths: ["engine/**", "server/**", "tests/**", "scripts/**", "render.yaml", ".github/workflows/**"]
   workflow_dispatch: {}
 
 jobs:
@@ -21,3 +22,15 @@ jobs:
       - name: 엔진 + 서버 테스트
         env: { PLANNER_FONT: /usr/share/fonts/truetype/nanum/NanumGothic.ttf }
         run: python -m pytest -q
+
+  deploy-render:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Render 배포 + 결과 확인
+        env: { RENDER_API_KEY: "${{ secrets.RENDER_API_KEY }}" }
+        run: python scripts/render_deploy.py

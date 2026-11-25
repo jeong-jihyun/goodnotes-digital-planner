@@ -217,7 +217,8 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "fontReady": font_ready(), "running": MAX_RUNNING - SLOTS._value, "time": now_iso()}
+    return {"status": "ok", "fontReady": font_ready(), "running": MAX_RUNNING - SLOTS._value, "time": now_iso(),
+            "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]}   # Render 가 넣어 주는 배포 커밋
 
 
 @app.get("/api/v1/planner/options")
