@@ -10,9 +10,22 @@ from huggingface_hub import HfApi
 SPACE_NAME = os.environ.get("SPACE_NAME", "goodnotes-planner-api")
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-token = os.environ["HF_TOKEN"]
+def fail(title, e):
+    """실패 이유를 GitHub 알림(annotation)으로 남기고 실패 처리 (접속 키 값은 남기지 않음)"""
+    msg = f"{type(e).__name__}: {e}".replace("\n", " / ")[:900]
+    print(f"::error title={title}::{msg}", flush=True)
+    sys.exit(1)
+
+
+token = os.environ["HF_TOKEN"].strip()
 api = HfApi(token=token)
-user = api.whoami()["name"]
+try:
+    me = api.whoami()
+except Exception as e:
+    fail("접속 키 확인 실패", e)
+user = me["name"]
+role = (me.get("auth", {}).get("accessToken", {}) or {}).get("role", "?")
+print(f"::notice title=접속 키 확인::user={user} role={role}", flush=True)
 repo_id = f"{user}/{SPACE_NAME}"
 
 # Space 에 올릴 파일만 모은다: server/* + engine/ (글꼴 파일·테스트·화면 코드는 제외)
@@ -23,11 +36,20 @@ shutil.copy(os.path.join(ROOT, "server", "SPACE_README.md"), os.path.join(stage,
 shutil.copytree(os.path.join(ROOT, "engine"), os.path.join(stage, "engine"),
                 ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.ttf"))
 
-api.create_repo(repo_id, repo_type="space", space_sdk="docker", exist_ok=True, private=False)
-api.upload_folder(folder_path=stage, repo_id=repo_id, repo_type="space",
-                  commit_message=f"deploy {os.environ.get('GITHUB_SHA', 'local')[:7]}",
-                  delete_patterns=["*"])
-info = api.space_info(repo_id)
+try:
+    api.create_repo(repo_id, repo_type="space", space_sdk="docker", exist_ok=True, private=False)
+except Exception as e:
+    fail("Space 만들기 실패", e)
+try:
+    api.upload_folder(folder_path=stage, repo_id=repo_id, repo_type="space",
+                      commit_message=f"deploy {os.environ.get('GITHUB_SHA', 'local')[:7]}",
+                      delete_patterns=["*"])
+except Exception as e:
+    fail("Space 업로드 실패", e)
+try:
+    info = api.space_info(repo_id)
+except Exception as e:
+    fail("Space 정보 확인 실패", e)
 host = getattr(info, "host", None) or f"https://{user.lower()}-{SPACE_NAME}.hf.space"
 print(f"::notice title=Space 업로드::repo={repo_id} host={host} private={info.private}")
 
