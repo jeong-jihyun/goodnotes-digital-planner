@@ -1,0 +1,14 @@
+# Render Blueprint — 무료 웹 서비스 1개 (PDF 생성 API)
+# main 에 올라오면 Render 가 자동으로 다시 빌드·배포한다.
+services:
+  - type: web
+    name: goodnotes-planner-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    buildFilter:
+      paths: ["engine/**", "server/**", "render.yaml"]

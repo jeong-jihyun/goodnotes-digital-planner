@@ -101,12 +101,9 @@ export default function GeneratePage() {
           {!isDesktop && <Row end={serverRow}>PDF 만드는 서버</Row>}
           {isDesktop && <Row end={<StatusTag tone="ok">데스크톱 앱</StatusTag>}>실행 환경</Row>}
 
-          {server === 'waking' && <Notice>무료 서버가 쉬고 있어서 깨우는 중입니다. 처음 한 번은 30초~1분 걸릴 수 있습니다.</Notice>}
+          {server === 'waking' && <Notice>무료 서버가 쉬고 있어서 깨우는 중입니다. 15분 넘게 아무도 쓰지 않으면 잠들어서, 처음 한 번은 1분쯤 걸릴 수 있습니다.</Notice>}
           {server === 'down' && (
-            <Notice tone="error">
-              서버에 연결하지 못했습니다. 잠시 후 이 화면을 새로고침해 주세요.{' '}
-              <a href="https://huggingface.co/spaces/jeongjih/goodnotes-planner-api" target="_blank" rel="noopener">서버 상태 보기</a>
-            </Notice>
+            <Notice tone="error">서버에 연결하지 못했습니다. 무료 서버가 깨어나는 데 1분쯤 걸릴 수 있으니, 1분 뒤 이 화면을 새로고침해 주세요.</Notice>
           )}
           {server === 'none' && !isDesktop && <Notice stage={5}>서버 주소가 아직 연결되지 않았습니다.</Notice>}
 

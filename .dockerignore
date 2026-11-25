@@ -1,0 +1,9 @@
+.git
+ui
+desktop
+docs
+claude
+tests
+output
+**/__pycache__
+**/*.pyc

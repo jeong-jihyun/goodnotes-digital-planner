@@ -1,4 +1,4 @@
-"""플래너 PDF 생성 API (Hugging Face Spaces에서 실행).
+"""플래너 PDF 생성 API (Render 무료 웹 서비스에서 실행).
 
 흐름: 화면(Vercel) → POST /api/v1/generations → 뒤에서 엔진 실행 → GET 상태 조회 → GET 다운로드
 설계 기준: docs/PRJ-0001_API-설계서_v1.0.docx
